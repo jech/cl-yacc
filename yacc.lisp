@@ -152,7 +152,7 @@
           (push s seen)
           (when (derives-epsilon s grammar)
             (push s de)))))
-    (format stream "~D symbols derive epsilon:~%~S~%"
+    (format stream "~D symbols derive epsilon:~%~S~%~%"
             (length de) (nreverse de))))
 
 (defun derives-first (c grammar &optional seen)
@@ -226,6 +226,17 @@
     ((terminal-p s grammar) (list s))
     (t (remove-if-not #'(lambda (s) (terminal-p s grammar))
                       (derives-first s grammar)))))
+
+(defun print-first-terminals (grammar &optional (stream *standard-output*))
+  (let ((df '()))
+    (dolist (p (grammar-productions grammar))
+      (let ((s (production-symbol p)))
+        (unless (assoc s df)
+          (push (cons s (first-terminals s grammar)) df))))
+    (format stream "First terminals:~%")
+    (dolist (e (nreverse df))
+      (format stream "~S: ~S~%" (car e) (cdr e)))
+    (format stream "~%")))
 
 (defun sequence-first-terminals (s grammar)
   (declare (list s) (type grammar grammar))
@@ -896,7 +907,8 @@
       (%make-parser numkernels goto action))))
 
 (defun make-parser (grammar
-                    &key (discard-memos t) (print-derives-epsilon nil)
+                    &key (discard-memos t)
+                    (print-derives-epsilon nil) (print-first-terminals nil)
                     (print-states nil)
                     (print-goto-graph nil) (print-lookaheads nil))
 
@@ -905,6 +917,7 @@
     (compute-all-lookaheads kernels grammar)
     (number-kernels kernels)
     (when print-derives-epsilon (print-derives-epsilon grammar))
+    (when print-first-terminals (print-first-terminals grammar))
     (when print-goto-graph (print-goto-graph kernels))
     (when (or print-states print-lookaheads)
       (print-states kernels print-lookaheads))
@@ -996,7 +1009,7 @@
     (dolist (form forms)
       (cond
         ((member (car form)
-                 '(:print-derives-epsilon
+                 '(:print-derives-epsilon :print-first-terminals
                    :print-states :print-goto-graph :print-lookaheads))
          (unless (null (cddr form))
            (error "Malformed option ~S" form))

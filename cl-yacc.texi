@@ -206,11 +206,16 @@ Defines the list of terminals of the grammar.  This is required.
 @defmac define-parser name option... production...
 Assigns a parser to the special variable @var{name}.
 The syntax is the same as that of @code{define-grammar}, except that
-the following additional options are allowed:
+the following additional debugging options are allowed:
 
 @table @code
 @item :print-derives-epsilon
-If true, print the list of nonterminal symbols that derive the empty string.
+If true, print the list of nonterminal symbols that derive the empty
+string.
+
+@item :print-first-terminals
+If true, print for every nonterminal symbol the list of terminals that
+it may start with.
 
 @item :print-states
 If true, print the computed kernels of LR(0) items.
@@ -252,13 +257,13 @@ documentation).  @var{Start-symbol} is the starting symbol,
 a list of productions.
 @end defun
 
-@defun make-parser grammar @akey{} discard-memos print-derives-epsilon print-states print-goto-graph print-lookaheads
+@defun make-parser grammar @akey{} discard-memos print-derives-epsilon print-first-terminals print-states print-goto-graph print-lookaheads
 Computes and returns a parser for grammar @var{grammar}.
 @var{discard-memos} specifies whether temporary data associated with
 the grammar should be discarded.  @var{Discard-memos},
-@var{print-derives-epsilon}, @var{print-states},
-@var{print-goto-graph} and @var{print-lookaheads} are as in
-@code{define-parser}.
+@var{print-derives-epsilon}, @var{print-first-terminals},
+@var{print-states}, @var{print-goto-graph} and @var{print-lookaheads}
+are as in @code{define-parser}.
 @end defun
 
 @node Conditions,  , Programmatic interface, Reference
