@@ -1129,20 +1129,6 @@ Handle YACC-PARSE-ERROR to provide custom error reporting."
     (values (nreverse options) (nreverse make-options)
             (nreverse productions))))
 
-(defparameter *max-list-elements* (min call-arguments-limit 1024)
-  "The actual list size used by DUMP-LIST.")
-
-(defun dump-list (list)
-  "Like `(LIST ,@LIST), but avoids CALL-ARGUMENTS-LIMIT."
-  (declare (type list list))
-  (if (<= (length list) *max-list-elements*)
-      `(list ,@list)
-      (do ((lists '())
-           (list list (nthcdr *max-list-elements* list)))
-          ((null list) `(reduce #'append (list ,@(nreverse lists))))
-        (push `(list ,@(subseq list 0 (min (length list) *max-list-elements*)))
-              lists))))
-
 (defmacro define-grammar (name &body body)
   "DEFINE-GRAMMAR NAME OPTION... PRODUCTION...
 PRODUCTION ::= (SYMBOL RHS...)
