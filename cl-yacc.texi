@@ -260,10 +260,10 @@ a list of productions.
 @defun make-parser grammar @akey{} discard-memos print-derives-epsilon print-first-terminals print-states print-goto-graph print-lookaheads
 Computes and returns a parser for grammar @var{grammar}.
 @var{discard-memos} specifies whether temporary data associated with
-the grammar should be discarded.  @var{Discard-memos},
-@var{print-derives-epsilon}, @var{print-first-terminals},
-@var{print-states}, @var{print-goto-graph} and @var{print-lookaheads}
-are as in @code{define-parser}.
+the grammar should be discarded.  @var{Print-derives-epsilon},
+@var{print-first-terminals}, @var{print-states},
+@var{print-goto-graph} and @var{print-lookaheads} are as in
+@code{define-parser}.
 @end defun
 
 @node Conditions,  , Programmatic interface, Reference
