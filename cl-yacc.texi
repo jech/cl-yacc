@@ -96,9 +96,12 @@ expression ::= expression @code{+} expression
 expression ::= expression @code{-} expression
 expression ::= expression @code{*} expression
 expression ::= expression @code{/} expression
-expression ::= id
-expression ::= int
-expression ::= @code{(} expression @code{)}
+expression ::= term
+
+term ::= id
+term ::= int
+term ::= @code{-} term
+term ::= @code{(} expression @code{)}
 @end display
 
 As this grammar is ambiguous, we need to specify the precedence and
@@ -106,13 +109,19 @@ associativity of the operators. The operators @code{*} and @code{/}
 will have the highest precedence, @code{+} and @code{-} will have a
 lower one.  All operators will be left-associative.
 
-Except for the very last production, the defaults chosen by CL-Yacc
-for productions are fine.  For the last production, we define a
-non-default action @code{k-2-3}:
+CL-Yacc provides default semantic actions that are often adequate.
+For building a Lisp-like parse tree with this grammar, we will need
+two @emph{ad hoc} actions:
 
 @lisp
 (eval-when (compile load eval)
-  (defun k-2-3 (a b c) (declare (ignore a c)) b)
+  (defun i2p (a b c) 
+    "Infix to prefix"
+    (list b a c))
+
+  (defun k-2-3 (a b c)
+    (declare (ignore a c))
+    b)
 )
 @end lisp
 
@@ -124,12 +133,16 @@ The parser definition itself:
   (:precedence ((:left * /) (:left + -)))
 
   (expression
-   (expression + expression)
-   (expression - expression)
-   (expression * expression)
-   (expression / expression)
+   (expression + expression #'i2p)
+   (expression - expression #'i2p)
+   (expression * expression #'i2p)
+   (expression / expression #'i2p))
+   term
+
+  (term
    id
    int
+   (- term)
    (|(| expression |)| #'k-2-3)))
 @end lisp
 
@@ -138,8 +151,8 @@ The parser is now the value of the special variable
 @code{parse-with-lexer}:
 
 @lisp
-(parse-with-lexer (list-lexer '(x * 2 + 3 * y)) *expression-parser*)
-    @result{} ((X * 2) + (3 * Y))
+(parse-with-lexer (list-lexer '(x * - - 2 + 3 * y)) *expression-parser*)
+    @result{} (+ (* X (- (- 2))) (* 3 Y))
 @end lisp
 
 @node Reference, Function index, Example, Top
