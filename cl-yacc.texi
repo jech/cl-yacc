@@ -206,9 +206,19 @@ Defines the list of terminals of the grammar.  This is required.
 @defmac define-parser name option... production...
 Assigns a parser to the special variable @var{name}.
 The syntax is the same as that of @code{define-grammar}, except that
-the following additional debugging options are allowed:
+the following additional options are allowed:
 
 @table @code
+@item :muffle-conflicts
+
+If @code{nil} (the default), a warning is signalled for every
+conflict.  If the symbol @code{:some}, then only a summary of the
+number of conflicts is signalled.  If @code{T}, then no warnings at
+all are signalled for conflicts.  Otherwise, its value should be a
+list of two integers (@var{sr} @var{rr}), in which case a summary
+warning will be signalled unless exactly @var{sr} shift-reduce and
+@var{rr} reduce-reduce conflicts were found.
+
 @item :print-derives-epsilon
 If true, print the list of nonterminal symbols that derive the empty
 string.
@@ -257,13 +267,13 @@ documentation).  @var{Start-symbol} is the starting symbol,
 a list of productions.
 @end defun
 
-@defun make-parser grammar @akey{} discard-memos print-derives-epsilon print-first-terminals print-states print-goto-graph print-lookaheads
+@defun make-parser grammar @akey{} discard-memos muffle-conflicts print-derives-epsilon print-first-terminals print-states print-goto-graph print-lookaheads
 Computes and returns a parser for grammar @var{grammar}.
 @var{discard-memos} specifies whether temporary data associated with
-the grammar should be discarded.  @var{Print-derives-epsilon},
-@var{print-first-terminals}, @var{print-states},
-@var{print-goto-graph} and @var{print-lookaheads} are as in
-@code{define-parser}.
+the grammar should be discarded.  @var{Muffle-conflicts},
+@var{print-derives-epsilon}, @var{print-first-terminals},
+@var{print-states}, @var{print-goto-graph} and @var{print-lookaheads}
+are as in @code{define-parser}.
 @end defun
 
 @node Conditions,  , Programmatic interface, Reference

@@ -799,25 +799,26 @@
   (goto (required-argument) :type simple-vector)
   (action (required-argument) :type simple-vector))
 
-(defun handle-conflict (a1 a2 i s &optional item)
+(defun handle-conflict (a1 a2 i s &optional item muffle-conflicts)
   (declare (type action a1 a2) (type index i) (symbol s))
   (when (action-equal-p a1 a2)
     (return-from handle-conflict (values a1 0 0)))
   (when (and (shift-action-p a2) (reduce-action-p a1))
     (psetq a1 a2 a2 a1))
-  (warn (make-condition
-         'conflict-warning
-         :kind (typecase a1
-                 (shift-action :shift-reduce)
-                 (t :reduce-reduce))
-         :state i :terminal s
-         :format-control "~S and ~S~@[ ~_~A~]"
-         :format-arguments (list a1 a2 item)))
+  (unless muffle-conflicts
+    (warn (make-condition
+           'conflict-warning
+           :kind (typecase a1
+                   (shift-action :shift-reduce)
+                   (t :reduce-reduce))
+           :state i :terminal s
+           :format-control "~S and ~S~@[ ~_~A~]"
+           :format-arguments (list a1 a2 item))))
   (typecase a1
     (shift-action (values a1 1 0))
     (t (values a1 0 1))))
 
-(defun compute-parsing-tables (kernels grammar)
+(defun compute-parsing-tables (kernels grammar &key muffle-conflicts)
   (declare (list kernels) (type grammar grammar))
   (let ((numkernels (length kernels)))
     (let ((goto (make-array numkernels :initial-element '()))
@@ -831,7 +832,7 @@
                        (multiple-value-bind (new-action s-r r-r)
                            (handle-conflict
                             (cdr (assoc s (aref action i)))
-                            a i s item)
+                            a i s item muffle-conflicts)
                          (setf (cdr (assoc s (aref action i))) new-action)
                          (incf sr-conflicts s-r) (incf rr-conflicts r-r))
                        (push (cons s a) (aref action i))))))
@@ -900,14 +901,18 @@
           (dolist (g (kernel-gotos k))
             (when (not (terminal-p (goto-symbol g) grammar))
               (set-goto k (list (goto-symbol g)) (goto-target g))))))
-      (when (not (zerop (+ sr-conflicts rr-conflicts)))
+      (when (null muffle-conflicts) (setq muffle-conflicts '(0 0)))
+      (unless (or (eq t muffle-conflicts)
+                  (and (consp muffle-conflicts)
+                       (= (car muffle-conflicts) sr-conflicts)
+                       (= (cadr muffle-conflicts) rr-conflicts)))
         (warn (make-condition 'conflict-summary-warning
                               :shift-reduce sr-conflicts
                               :reduce-reduce rr-conflicts)))
       (%make-parser numkernels goto action))))
 
 (defun make-parser (grammar
-                    &key (discard-memos t)
+                    &key (discard-memos t) (muffle-conflicts nil)
                     (print-derives-epsilon nil) (print-first-terminals nil)
                     (print-states nil)
                     (print-goto-graph nil) (print-lookaheads nil))
@@ -922,7 +927,8 @@
     (when (or print-states print-lookaheads)
       (print-states kernels print-lookaheads))
     (prog1
-        (compute-parsing-tables kernels grammar)
+        (compute-parsing-tables kernels grammar
+                                :muffle-conflicts muffle-conflicts)
       (when discard-memos (grammar-discard-memos grammar)))))
 
 (define-condition yacc-parse-error (error)
@@ -1009,7 +1015,8 @@
     (dolist (form forms)
       (cond
         ((member (car form)
-                 '(:print-derives-epsilon :print-first-terminals
+                 '(:muffle-conflicts
+                   :print-derives-epsilon :print-first-terminals
                    :print-states :print-goto-graph :print-lookaheads))
          (unless (null (cddr form))
            (error "Malformed option ~S" form))
