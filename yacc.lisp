@@ -836,6 +836,16 @@ PRECEDENCE is a list of elements of the form (KEYWORD . (op...))."
     ((member op (cdar precedence)) precedence)
     (t (find-precedence op (cdr precedence)))))
 
+(defun find-single-terminal (s grammar)
+  "Return the only terminal in S, or NIL if none or multiple."
+  (declare (list s) (type grammar grammar))
+  (cond
+    ((null s) nil)
+    ((terminal-p (car s) grammar)
+     (and (not (member-if #'(lambda (s) (terminal-p s grammar)) (cdr s)))
+          (car s)))
+    (t (find-single-terminal (cdr s) grammar))))
+
 (defun handle-conflict (a1 a2 grammar action-productions id s
                         &optional muffle-conflicts)
   "Decide what to do with a conflict between A1 and A2 in state ID on symbol S.
@@ -849,11 +859,9 @@ Returns three actions: the chosen action, the number of new sr and rr."
   (let ((p1 (cdr (assoc a1 action-productions)))
         (p2 (cdr (assoc a2 action-productions))))
     ;; operator precedence and associativity
-    (when (and (shift-action-p a1) (reduce-action-p a2)
-               (= 3 (length (production-derives p1)))
-               (= 3 (length (production-derives p2))))
-      (let* ((op1 (cadr (production-derives p1)))
-             (op2 (cadr (production-derives p2)))
+    (when (and (shift-action-p a1) (reduce-action-p a2))
+      (let* ((op1 (find-single-terminal (production-derives p1) grammar))
+             (op2 (find-single-terminal (production-derives p2) grammar))
              (op1-tail (find-precedence op1 (grammar-precedence grammar)))
              (op2-tail (find-precedence op2 (grammar-precedence grammar))))
         (when (and (eq s op1) op1-tail op2-tail)
