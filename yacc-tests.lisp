@@ -107,7 +107,7 @@
       (accepts parser-epsilon-right '())
       (accepts parser-epsilon-right '(id))
       (accepts parser-epsilon-right '(id id))
-      nil)))
+      t)))
 
 ;;; Some higher-level tests
 
@@ -163,24 +163,44 @@
    int
    (|(| expression |)| #'k-2-3)))
 
-(defun parse-left-expression (stream)
-  (parse-with-lexer #'(lambda () (simple-lexer stream))
-                    *left-expression-parser*))
+(defun parse-left-expression (e)
+  (with-input-from-string (s e)
+    (parse-with-lexer #'(lambda () (simple-lexer s))
+                      *left-expression-parser*)))
+
+(define-parser *precedence-expression-parser*
+  (:start-symbol expression)
+  (:terminals (int id + - * / |(| |)|))
+  (:precedence ((:left * /) (:left + -)))
+
+  (expression
+   (expression + expression)
+   (expression - expression)
+   (expression * expression)
+   (expression / expression)
+   id
+   int
+   (|(| expression |)| #'k-2-3)))
+
+(defun parse-precedence-expression (e)
+  (with-input-from-string (s e)
+    (parse-with-lexer #'(lambda () (simple-lexer s))
+                      *precedence-expression-parser*)))
 
 (defun tests-hi ()
   (let ((*package* (find-package '#:yacc-tests)))
-    (with-input-from-string (s "5/3*(12+foo)/3+foo")
-      (parse-left-expression s))
-    (expect-condition yacc-parse-error
-      (with-input-from-string (s "5/3*(")
-        (parse-left-expression s)))
-    (expect-condition yacc-parse-error
-      (with-input-from-string (s "5/3)")
-        (parse-left-expression s)))
-    nil))
+    (dolist (e '("5/3*(12+foo)/3+foo"))
+        (parse-left-expression e)
+        (parse-precedence-expression e))
+    (dolist (e '("5/3*(" "5/3)"))
+      (expect-condition yacc-parse-error
+        (parse-left-expression e))
+      (expect-condition yacc-parse-error
+        (parse-precedence-expression e))))
+  t)
 
 (defun tests ()
   (tests-low)
   (tests-hi)
-  nil)
+  t)
 

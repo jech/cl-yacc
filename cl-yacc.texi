@@ -89,21 +89,22 @@ A very simple lexer that grabs tokens from a list:
               (values terminal value))))))
 @end lisp
 
-The parser below implements the following grammar:
+We will implement the following grammar:
 
 @display
-expression ::= expression @code{+} term
-expression ::= expression @code{-} term
-expression ::= term
-
-term ::= term @code{*} factor
-term ::= term @code{/} factor
-term ::= factor
-
-factor ::= id
-factor ::= int
-factor ::= @code{(} expression @code{)}
+expression ::= expression @code{+} expression
+expression ::= expression @code{-} expression
+expression ::= expression @code{*} expression
+expression ::= expression @code{/} expression
+expression ::= id
+expression ::= int
+expression ::= @code{(} expression @code{)}
 @end display
+
+As this grammar is ambiguous, we need to specify the precedence and
+associativity of the operators. The operators @code{*} and @code{/}
+will have the highest precedence, @code{+} and @code{-} will have a
+lower one.  All operators will be left-associative.
 
 Except for the very last production, the defaults chosen by CL-Yacc
 for productions are fine.  For the last production, we define a
@@ -117,27 +118,27 @@ non-default action @code{k-2-3}:
 
 The parser definition itself:
 @lisp
-(define-parser *left-expression-parser*
+(define-parser *expression-parser*
   (:start-symbol expression)
   (:terminals (int id + - * / |(| |)|))
+  (:precedence ((:left * /) (:left + -)))
 
-  (expression (expression + term)
-              (expression - term)
-              term)
-  (term (term * factor)
-        (term / factor)
-        factor)
-  (factor id
-          int
-          (|(| expression |)| #'k-2-3)))
+  (expression
+   (expression + expression)
+   (expression - expression)
+   (expression * expression)
+   (expression / expression)
+   id
+   int
+   (|(| expression |)| #'k-2-3)))
 @end lisp
 
 The parser is now the value of the special variable
-@code{*left-expression-parser*}, which can be passed to
+@code{*expression-parser*}, which can be passed to
 @code{parse-with-lexer}:
 
 @lisp
-(parse-with-lexer (list-lexer '(x * 2 + 3 * y)) *left-expression-parser*)
+(parse-with-lexer (list-lexer '(x * 2 + 3 * y)) *expression-parser*)
     @result{} ((X * 2) + (3 * Y))
 @end lisp
 
@@ -209,6 +210,16 @@ The syntax is the same as that of @code{define-grammar}, except that
 the following additional options are allowed:
 
 @table @code
+@item :precedence
+
+The value of this option should be a list of items of the form
+@code{(@r{@var{associativity}} . @r{@var{terminals}})}, where
+@var{associativity} is one of @code{:left}, @code{:right} or
+@code{:nonassoc}, and @var{terminals} is a list of terminal symbols.
+@var{Associativity} specifies the associativity of the terminals, and
+earlier items will give their elements a precedence higher than that of
+later ones.
+
 @item :muffle-conflicts
 
 If @code{nil} (the default), a warning is signalled for every
@@ -267,10 +278,10 @@ documentation).  @var{Start-symbol} is the starting symbol,
 a list of productions.
 @end defun
 
-@defun make-parser grammar @akey{} discard-memos muffle-conflicts print-derives-epsilon print-first-terminals print-states print-goto-graph print-lookaheads
+@defun make-parser grammar @akey{} discard-memos precedence muffle-conflicts print-derives-epsilon print-first-terminals print-states print-goto-graph print-lookaheads
 Computes and returns a parser for grammar @var{grammar}.
 @var{discard-memos} specifies whether temporary data associated with
-the grammar should be discarded.  @var{Muffle-conflicts},
+the grammar should be discarded.  @var{Precedence}, @var{muffle-conflicts},
 @var{print-derives-epsilon}, @var{print-first-terminals},
 @var{print-states}, @var{print-goto-graph} and @var{print-lookaheads}
 are as in @code{define-parser}.

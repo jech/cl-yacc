@@ -799,40 +799,75 @@
   (goto (required-argument) :type simple-vector)
   (action (required-argument) :type simple-vector))
 
-(defun handle-conflict (a1 a2 i s &optional item muffle-conflicts)
+(defun find-precedence (op precedence)
+  (cond
+    ((null precedence) '())
+    ((member op (cdar precedence)) precedence)
+    (t (find-precedence op (cdr precedence)))))
+
+(defun handle-conflict (a1 a2 precedence action-productions i s
+                        &optional muffle-conflicts)
   (declare (type action a1 a2) (type index i) (symbol s))
   (when (action-equal-p a1 a2)
     (return-from handle-conflict (values a1 0 0)))
   (when (and (shift-action-p a2) (reduce-action-p a1))
     (psetq a1 a2 a2 a1))
-  (unless muffle-conflicts
-    (warn (make-condition
-           'conflict-warning
-           :kind (typecase a1
-                   (shift-action :shift-reduce)
-                   (t :reduce-reduce))
-           :state i :terminal s
-           :format-control "~S and ~S~@[ ~_~A~]"
-           :format-arguments (list a1 a2 item))))
-  (typecase a1
-    (shift-action (values a1 1 0))
-    (t (values a1 0 1))))
+  (let ((p1 (cdr (assoc a1 action-productions)))
+        (p2 (cdr (assoc a2 action-productions))))
+    ;; operator precedence and associativity
+    (when (and (shift-action-p a1) (reduce-action-p a2)
+               (= 3 (length (production-derives p1)))
+               (= 3 (length (production-derives p2))))
+      (let* ((op1 (cadr (production-derives p1)))
+             (op2 (cadr (production-derives p2)))
+             (op1-tail (find-precedence op1 precedence))
+             (op2-tail (find-precedence op2 precedence)))
+        (when (and (eq s op1) op1-tail op2-tail)
+          (cond
+            ((eq op1-tail op2-tail)
+             (return-from handle-conflict
+               (ecase (caar op1-tail)
+                 ((:left) (values a2 0 0))
+                 ((:right) (values a1 0 0))
+                 ((:nonassoc) (values (make-error-action) 0 0)))))
+            (t
+             (return-from handle-conflict
+               (if (tailp op2-tail (cdr op1-tail))
+                   (values a1 0 0)
+                   (values a2 0 0))))))))
+    ;; default: prefer shift or first production
+    (unless muffle-conflicts
+      (warn (make-condition
+             'conflict-warning
+             :kind (typecase a1
+                     (shift-action :shift-reduce)
+                     (t :reduce-reduce))
+             :state i :terminal s
+             :format-control "~S and ~S~@[ ~_~A~]~@[ ~_~A~]"
+             :format-arguments (list a1 a2 p1 p2))))
+    (typecase a1
+      (shift-action (values a1 1 0))
+      (t (values a1 0 1)))))
 
-(defun compute-parsing-tables (kernels grammar &key muffle-conflicts)
+(defun compute-parsing-tables (kernels grammar
+                               &key precedence muffle-conflicts)
   (declare (list kernels) (type grammar grammar))
   (let ((numkernels (length kernels)))
     (let ((goto (make-array numkernels :initial-element '()))
           (action (make-array numkernels :initial-element '()))
           (sr-conflicts 0) (rr-conflicts 0)
-          (epsilon-productions (grammar-epsilon-productions grammar)))
-      (flet ((set-action (k symbols a &optional item)
+          (epsilon-productions (grammar-epsilon-productions grammar))
+          (action-productions '()))
+      (flet ((set-action (k symbols a production)
+               (push (cons a production) action-productions)
                (let ((i (kernel-id k)))
                  (dolist (s symbols)
                    (if (assoc s (aref action i))
                        (multiple-value-bind (new-action s-r r-r)
                            (handle-conflict
                             (cdr (assoc s (aref action i)))
-                            a i s item muffle-conflicts)
+                            a precedence action-productions
+                            i s muffle-conflicts)
                          (setf (cdr (assoc s (aref action i))) new-action)
                          (incf sr-conflicts s-r) (incf rr-conflicts r-r))
                        (push (cons s a) (aref action i))))))
@@ -856,7 +891,8 @@
                          (= 1 (item-position item)))
                     (when (member 'eof la)
                       (set-action k (list 'eof)
-                                  (make-accept-action))))
+                                  (make-accept-action)
+                                  (item-production item))))
                    (t
                     (set-action k la
                                 (make-reduce-action
@@ -864,7 +900,7 @@
                                  (length (item-derives item))
                                  :action (item-action item)
                                  :action-form (item-action-form item))
-                                item)))))
+                                (item-production item))))))
               (t
                (let ((c (item-dot-symbol item)))
                  ;; shift
@@ -875,7 +911,7 @@
                          (set-action k (list s)
                                      (make-shift-action
                                       (kernel-id (goto-target g)))
-                                     item)))))
+                                     (item-production item))))))
                  ;; epsilon reduction
                  (dolist (a-epsilon epsilon-productions)
                    (let ((a (production-symbol a-epsilon)))
@@ -895,7 +931,8 @@
                           (make-reduce-action
                            a 0
                            :action (production-action a-epsilon)
-                           :action-form (production-action-form a-epsilon)))
+                           :action-form (production-action-form a-epsilon))
+                          a-epsilon)
                          ))))
                  ))))
           (dolist (g (kernel-gotos k))
@@ -912,7 +949,8 @@
       (%make-parser numkernels goto action))))
 
 (defun make-parser (grammar
-                    &key (discard-memos t) (muffle-conflicts nil)
+                    &key (discard-memos t)
+                    (precedence '()) (muffle-conflicts nil)
                     (print-derives-epsilon nil) (print-first-terminals nil)
                     (print-states nil)
                     (print-goto-graph nil) (print-lookaheads nil))
@@ -928,6 +966,7 @@
       (print-states kernels print-lookaheads))
     (prog1
         (compute-parsing-tables kernels grammar
+                                :precedence precedence
                                 :muffle-conflicts muffle-conflicts)
       (when discard-memos (grammar-discard-memos grammar)))))
 
@@ -1015,7 +1054,7 @@
     (dolist (form forms)
       (cond
         ((member (car form)
-                 '(:muffle-conflicts
+                 '(:precedence :muffle-conflicts
                    :print-derives-epsilon :print-first-terminals
                    :print-states :print-goto-graph :print-lookaheads))
          (unless (null (cddr form))
