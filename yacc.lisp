@@ -286,7 +286,7 @@
   (cond
     ((null s) '())
     ((equal s (list a)) (list 'epsilon))
-    ((not (member (car s) (derives-first a grammar))) '())
+    ((not (member a (derives-first (car s) grammar))) '())
     ((eq (car s) a) (sequence-first (cdr s) grammar))
     (t (relative-first (car s) a grammar seen))))
 
