@@ -209,6 +209,9 @@ The syntax is the same as that of @code{define-grammar}, except that
 the following additional options are allowed:
 
 @table @code
+@item :print-derives-epsilon
+If true, print the list of nonterminal symbols that derive the empty string.
+
 @item :print-states
 If true, print the computed kernels of LR(0) items.
 
@@ -249,10 +252,11 @@ documentation).  @var{Start-symbol} is the starting symbol,
 a list of productions.
 @end defun
 
-@defun make-parser grammar @akey{} discard-memos print-states print-goto-graph print-lookaheads
+@defun make-parser grammar @akey{} discard-memos print-derives-epsilon print-states print-goto-graph print-lookaheads
 Computes and returns a parser for grammar @var{grammar}.
 @var{discard-memos} specifies whether temporary data associated with
-the grammar should be discarded.  @var{Print-states},
+the grammar should be discarded.  @var{Discard-memos},
+@var{print-derives-epsilon}, @var{print-states},
 @var{print-goto-graph} and @var{print-lookaheads} are as in
 @code{define-parser}.
 @end defun

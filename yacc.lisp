@@ -144,6 +144,17 @@
   (declare (list sequence) (type grammar grammar))
   (every #'(lambda (s) (derives-epsilon s grammar)) sequence))
 
+(defun print-derives-epsilon (grammar &optional (stream *standard-output*))
+  (let ((seen '()) (de '()))
+    (dolist (p (grammar-productions grammar))
+      (let ((s (production-symbol p)))
+        (unless (member s seen)
+          (push s seen)
+          (when (derives-epsilon s grammar)
+            (push s de)))))
+    (format stream "~D symbols derive epsilon:~%~S~%"
+            (length de) (nreverse de))))
+
 (defun derives-first (c grammar &optional seen)
   "The list of symbols A such that C rm->* A.eta for some eta."
   (declare (symbol c) (type grammar grammar) (list seen))
@@ -885,13 +896,15 @@
       (%make-parser numkernels goto action))))
 
 (defun make-parser (grammar
-                    &key (discard-memos t) (print-states nil)
+                    &key (discard-memos t) (print-derives-epsilon nil)
+                    (print-states nil)
                     (print-goto-graph nil) (print-lookaheads nil))
 
   (declare (type grammar grammar))
   (let ((kernels (compute-kernels grammar)))
     (compute-all-lookaheads kernels grammar)
     (number-kernels kernels)
+    (when print-derives-epsilon (print-derives-epsilon grammar))
     (when print-goto-graph (print-goto-graph kernels))
     (when (or print-states print-lookaheads)
       (print-states kernels print-lookaheads))
@@ -983,7 +996,8 @@
     (dolist (form forms)
       (cond
         ((member (car form)
-                 '(:print-states :print-goto-graph :print-lookaheads))
+                 '(:print-derives-epsilon
+                   :print-states :print-goto-graph :print-lookaheads))
          (unless (null (cddr form))
            (error "Malformed option ~S" form))
          (push (car form) make-options)
