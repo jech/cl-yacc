@@ -290,6 +290,11 @@ terminal that couldn't be accepted; @var{value} is its value.
 accepted in that state.
 @end deftp
 
+@unnumbered Acknowledgements
+
+I am grateful to Marc Zeitoun, Antonio Bucciarelli and especially Guy
+Cousineau for their help with implementing CL-Yacc.
+
 @unnumbered Copying
 
 @quotation
