@@ -1024,7 +1024,10 @@
                         'yacc-parse-error
                         :terminal symbol :value value
                         :expected-terminals
-                        (mapcar #'car (aref action-array state)))))
+                        (mapcan #'(lambda (e)
+                                    (and (not (error-action-p (cdr e)))
+                                         (list (car e))))
+                                (aref action-array state)))))
                ))))))))
 
 ;;; User interface
