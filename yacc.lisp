@@ -1136,6 +1136,10 @@
    `(setf (reduce-action-action-form ,a) ',(reduce-action-action-form a)
           (reduce-action-action ,a) (eval ',(reduce-action-action-form a)))))
 
+(defmethod make-load-form ((a error-action) &optional env)
+  (declare (ignore env))
+  (make-error-action))
+
 (defmethod make-load-form ((a shift-action) &optional env)
   (declare (ignore env))
   `(make-shift-action ',(shift-action-state a)))
