@@ -24,6 +24,13 @@
 
 (in-package #:yacc-tests)
 
+(defmacro expect (form expected)
+  (let ((value (gensym "VALUE")))
+    `(let ((,value ,form))
+      (unless (equal ,value ,expected)
+        (error "Test failed: ~S yielded ~S, expected ~S"
+               ',form ,value ,expected)))))
+
 (defmacro expect-condition (class &body body)
   (let ((name (gensym "EXPECT-CONDITION")))
   `(block ,name
@@ -93,20 +100,21 @@
         (parser-4-21 (make-parser (make-grammar-4-21)))
         (parser-epsilon-left (make-parser (make-grammar-epsilon-left)))
         (parser-epsilon-right (make-parser (make-grammar-epsilon-right))))
-    (flet ((accepts (parser list &optional (result nil result-p))
-             (let ((p (parse-with-lexer (list-lexer list) parser)))
-               (when result-p
-                 (assert (equal p result))))))
-      (accepts parser-4-31 '(lb id + id * id rb) '(LB (ID + (ID * ID)) RB))
-      (accepts parser-4-31 '(lb id * id + id rb) '(lb ((id * id) + id) rb))
-      (accepts parser-4-20 '(* id = * * id) '((* ((id))) = ((* ((* ((id))))))))
-      (accepts parser-4-21 '(c d c d) '((c (d)) (c (d))))
-      (accepts parser-epsilon-left '())
-      (accepts parser-epsilon-left '(id))
-      (accepts parser-epsilon-left '(id id))
-      (accepts parser-epsilon-right '())
-      (accepts parser-epsilon-right '(id))
-      (accepts parser-epsilon-right '(id id))
+    (flet ((parse (parser list) (parse-with-lexer (list-lexer list) parser)))
+      (expect (parse parser-4-31 '(lb id + id * id rb))
+              '(LB (ID + (ID * ID)) RB))
+      (expect (parse parser-4-31 '(lb id * id + id rb))
+              '(lb ((id * id) + id) rb))
+      (expect (parse parser-4-20 '(* id = * * id))
+              '((* ((id))) = ((* ((* ((id))))))))
+      (expect (parse parser-4-21 '(c d c d))
+              '((c (d)) (c (d))))
+      (expect (parse parser-epsilon-left '()) '())
+      (expect (parse parser-epsilon-left '(id)) '(nil id))
+      (expect (parse parser-epsilon-left '(id id)) '((nil id) id))
+      (expect (parse parser-epsilon-right '()) '())
+      (expect (parse parser-epsilon-right '(id)) '(id nil))
+      (expect (parse parser-epsilon-right '(id id)) '(id (id nil)))
       t)))
 
 ;;; Some higher-level tests
@@ -163,12 +171,7 @@
    int
    (|(| expression |)| #'k-2-3)))
 
-(defun parse-left-expression (e)
-  (with-input-from-string (s e)
-    (parse-with-lexer #'(lambda () (simple-lexer s))
-                      *left-expression-parser*)))
-
-(define-parser *precedence-expression-parser*
+(define-parser *precedence-left-expression-parser*
   (:start-symbol expression)
   (:terminals (int id + - * / |(| |)|))
   (:precedence ((:left * /) (:left + -)))
@@ -182,21 +185,59 @@
    int
    (|(| expression |)| #'k-2-3)))
 
-(defun parse-precedence-expression (e)
-  (with-input-from-string (s e)
-    (parse-with-lexer #'(lambda () (simple-lexer s))
-                      *precedence-expression-parser*)))
+(define-parser *precedence-right-expression-parser*
+  (:start-symbol expression)
+  (:terminals (int id + - * / |(| |)|))
+  (:precedence ((:right * /) (:right + -)))
+
+  (expression
+   (expression + expression)
+   (expression - expression)
+   (expression * expression)
+   (expression / expression)
+   id
+   int
+   (|(| expression |)| #'k-2-3)))
+
+(define-parser *precedence-nonassoc-expression-parser*
+  (:start-symbol expression)
+  (:terminals (int id + - * / |(| |)|))
+  (:precedence ((:nonassoc * /) (:nonassoc + -)))
+
+  (expression
+   (expression + expression)
+   (expression - expression)
+   (expression * expression)
+   (expression / expression)
+   id
+   int
+   (|(| expression |)| #'k-2-3)))
 
 (defun tests-hi ()
-  (let ((*package* (find-package '#:yacc-tests)))
-    (dolist (e '("5/3*(12+foo)/3+foo"))
-        (parse-left-expression e)
-        (parse-precedence-expression e))
-    (dolist (e '("5/3*(" "5/3)"))
-      (expect-condition yacc-parse-error
-        (parse-left-expression e))
-      (expect-condition yacc-parse-error
-        (parse-precedence-expression e))))
+  (flet ((parse (parser e) 
+           (with-input-from-string (s e)
+             (parse-with-lexer #'(lambda () (simple-lexer s)) parser))))
+    (let ((*package* (find-package '#:yacc-tests)))
+      (let ((e "(x+3)+y*z") (v '(("x" + 3) + ("y" * "z"))))
+        (expect (parse *left-expression-parser* e) v)
+        (expect (parse *precedence-left-expression-parser* e) v)
+        (expect (parse *precedence-right-expression-parser* e) v)
+        (expect (parse *precedence-nonassoc-expression-parser* e) v))
+      (let ((e "x+5/3*(12+y)/3+z"))
+        (let ((v '(("x" + (((5 / 3) * (12 + "y")) / 3)) + "z")))
+          (expect (parse *left-expression-parser* e) v)
+          (expect (parse *precedence-left-expression-parser* e) v))
+        (let ((v '("x" + ((5 / (3 * ((12 + "y") / 3))) + "z"))))
+          (expect (parse *precedence-right-expression-parser* e) v))
+        (expect-condition yacc-parse-error
+          (parse *precedence-nonassoc-expression-parser* e)))
+      (dolist (e '("5/3*(" "5/3)"))
+        (expect-condition yacc-parse-error
+          (parse *left-expression-parser* e))
+        (expect-condition yacc-parse-error
+          (parse *precedence-left-expression-parser* e))
+        (expect-condition yacc-parse-error
+          (parse *precedence-right-expression-parser* e)))))
   t)
 
 (defun tests ()
