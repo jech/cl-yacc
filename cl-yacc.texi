@@ -136,8 +136,8 @@ The parser definition itself:
    (expression + expression #'i2p)
    (expression - expression #'i2p)
    (expression * expression #'i2p)
-   (expression / expression #'i2p))
-   term
+   (expression / expression #'i2p)
+   term)
 
   (term
    id
