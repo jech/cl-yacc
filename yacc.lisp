@@ -498,8 +498,8 @@
 
 (defun map-lr1-collection (f collection)
   "Apply F to all elements of COLLECTION."
-  (declare (dynamic-extent f))
-  (declare (type lr1-collection collection))
+  (declare (type function f) (dynamic-extent f)
+           (type lr1-collection collection))
   (typecase collection
     (list (mapcar f collection))
     (hash-table (maphash #'(lambda (k v) (declare (ignore k)) (funcall f v))
@@ -834,6 +834,7 @@ If PROPAGATE-ONLY is true, ignore spontaneous generation."
 (defun find-precedence (op precedence)
   "Return the tail of PRECEDENCE starting with the element containing OP.
 PRECEDENCE is a list of elements of the form (KEYWORD . (op...))."
+  (declare (symbol op))
   (cond
     ((null precedence) '())
     ((member op (cdar precedence)) precedence)
@@ -910,6 +911,7 @@ or a list of the form (sr rr)."
                (push (cons a production) action-productions)
                (let ((id (kernel-id k)))
                  (dolist (s symbols)
+                   (declare (symbol s))
                    (if (assoc s (aref action id))
                        (multiple-value-bind (new-action s-r r-r)
                            (handle-conflict
