@@ -100,6 +100,7 @@
       (and (member symbol (grammar-terminals grammar)) t)))
 
 (defun grammar-symbols (grammar)
+  "The set of symbols (both terminal and nonterminal) of GRAMMAR."
   (declare (type grammar grammar))
   (cond
     ((eq :undefined (grammar-%symbols grammar))
@@ -141,6 +142,7 @@
       (return t))))
 
 (defun sequence-derives-epsilon (sequence grammar)
+  "Sequence version of DERIVES-EPSILON*."
   (declare (list sequence) (type grammar grammar))
   (every #'(lambda (s) (derives-epsilon s grammar)) sequence))
 
@@ -213,6 +215,7 @@
          derives)))))
 
 (defun sequence-derives-first-terminal (sequence grammar &optional seen)
+  "Sequence version of DERIVES-FIRST-TERMINAL."
   (declare (list sequence) (type grammar grammar) (list seen))
   (cond
     ((null sequence) '())
@@ -227,7 +230,18 @@
     (t (remove-if-not #'(lambda (s) (terminal-p s grammar))
                       (derives-first s grammar)))))
 
+(defun sequence-first-terminals (s grammar)
+  "Sequence version of FIRST-TERMINALS."
+  (declare (list s) (type grammar grammar))
+  (cond
+    ((null s) '())
+    (t (let ((sf (first-terminals (car s) grammar)))
+         (if (derives-epsilon (car s) grammar)
+             (union sf (sequence-first-terminals (cdr s) grammar))
+             sf)))))
+
 (defun print-first-terminals (grammar &optional (stream *standard-output*))
+  "Print FIRST (without epsilon) for all symbols of GRAMMAR."
   (let ((df '()))
     (dolist (p (grammar-productions grammar))
       (let ((s (production-symbol p)))
@@ -237,15 +251,6 @@
     (dolist (e (nreverse df))
       (format stream "~S: ~S~%" (car e) (cdr e)))
     (format stream "~%")))
-
-(defun sequence-first-terminals (s grammar)
-  (declare (list s) (type grammar grammar))
-  (cond
-    ((null s) '())
-    (t (let ((sf (first-terminals (car s) grammar)))
-         (if (derives-epsilon (car s) grammar)
-             (union sf (sequence-first-terminals (cdr s) grammar))
-             sf)))))
 
 (defun sequence-first (s grammar)
   "FIRST(s)."
@@ -282,6 +287,7 @@
          res))))
 
 (defun relative-first-sequence (s a grammar &optional seen)
+  "Sequence version of RELATIVE-FIRST."
   (declare (list s seen) (symbol a) (type grammar grammar))
   (cond
     ((null s) '())
@@ -349,19 +355,21 @@
            (eq (item-lookahead i1) (item-lookahead i2)))))
 
 (defun item-equal-p (i1 i2)
-  "Compares items treating them as LR(0) items."
+  "Equality predicate for LR(0) items."
   (declare (type item i1 i2))
   (or (eq i1 i2)
       (and (eq (item-production i1) (item-production i2))
            (= (item-position i1) (item-position i2)))))
 
 (defun item-lr1-hash-value (item)
+  "Returns an object suitable for keying associations of LR1-items."
   (declare (type lr1-item item))
   (cons (production-id (item-production item))
         (cons (item-position item)
               (item-lookahead item))))
 
 (defun item< (i1 i2)
+  "Total strict order on LR(0) items."
   (declare (type item i1 i2))
   (cond
     ((eq i1 i2) nil)
@@ -429,6 +437,7 @@
     (or k (%make-kernel items))))
 
 (defun kernel-item (kernel)
+  "The item in a singleton set of items."
   (declare (type kernel kernel))
   (assert (null (cdr (kernel-items kernel))))
   (the lr0-item (car (kernel-items kernel))))
@@ -453,7 +462,7 @@
     (list (null collection))
     (hash-table (zerop (hash-table-count collection)))))
 
-(defun empty-lr1-collection (collection)
+(defun clear-lr1-collection (collection)
   (declare (type lr1-collection collection))
   (typecase collection
     (list '())
@@ -468,7 +477,9 @@
     h))
 
 (declaim (inline lr1-find))
+
 (defun lr1-find (item collection)
+  "Find an LR(1) item equal to ITEM in COLLECTION, or NIL."
   (declare (optimize speed))
   (declare (type item item) (type lr1-collection collection))
   (typecase collection
@@ -476,6 +487,7 @@
     (hash-table (gethash (item-lr1-hash-value item) collection))))
 
 (defun map-lr1-collection (f collection)
+  "Apply F to all elements of COLLECTION."
   (declare (dynamic-extent f))
   (declare (type lr1-collection collection))
   (typecase collection
@@ -484,7 +496,9 @@
                          collection))))
 
 (declaim (inline lr1-add))
+
 (defun lr1-add (item collection)
+  "Add ITEM to COLLECTION."
   (declare (type lr1-item item) (type lr1-collection collection))
   (typecase collection
     (list (cons item collection))
@@ -493,6 +507,7 @@
      collection)))
 
 (defun lr1-add-collection (items collection)
+  "Add all the elements of ITEMS to COLLECTION."
   (declare (type lr1-collection items collection))
   (typecase items
     (list
@@ -546,6 +561,7 @@
   (target (required-argument) :type kernel))
 
 (declaim (inline goto-equal-p find-goto))
+
 (defun goto-equal-p (g1 g2)
   (declare (type goto g1 g2))
   (and (eq (goto-symbol g1) (goto-symbol g2))
@@ -575,6 +591,7 @@
     result))
 
 (defun compute-kernels (grammar)
+  "Compute the set collections of LR(0) items for GRAMMAR."
   (declare (type grammar grammar))
   (let ((p0 (car (grammar-productions grammar))))
     (assert (= 1 (length (production-derives p0))))
@@ -609,6 +626,7 @@
 ;;; Lookaheads
 
 (defun compute-lookaheads (kernel grammar)
+  "Compute the LR(1) lookaheads for all items in KERNEL."
   (declare (type kernel kernel) (type grammar grammar))
   (let ((res '()))
     (declare (optimize speed))
@@ -628,6 +646,7 @@
     res))
 
 (defun compute-all-lookaheads (kernels grammar)
+  "Compute the LR(1) lookaheads for all the collections in KERNELS."
   (declare (list kernels) (type grammar grammar))
   (setf (item-lookaheads (kernel-item (car kernels))) (list 'eof))
   (let ((previously-changed kernels)
@@ -693,7 +712,7 @@
 ;;; Parser generation
 
 (defun number-kernels (kernels)
-  "Set ID for all kernels in KERNELS."
+  "Set a unique ID for all kernels in KERNELS."
   (declare (list kernels))
   (let ((id 0))
     (dolist (k kernels)
@@ -800,6 +819,8 @@
   (action (required-argument) :type simple-vector))
 
 (defun find-precedence (op precedence)
+  "Return the tail of PRECEDENCE starting with the element containing OP.
+PRECEDENCE is a list of elements of the form (KEYWORD . (op...))."
   (cond
     ((null precedence) '())
     ((member op (cdar precedence)) precedence)
@@ -807,6 +828,8 @@
 
 (defun handle-conflict (a1 a2 precedence action-productions i s
                         &optional muffle-conflicts)
+  "Decide what to do with a conflict between A1 and A2 in state I on symbol S.
+Returns three actions: the chosen action, the number of new sr and rr."
   (declare (type action a1 a2) (type index i) (symbol s))
   (when (action-equal-p a1 a2)
     (return-from handle-conflict (values a1 0 0)))
@@ -851,6 +874,9 @@
 
 (defun compute-parsing-tables (kernels grammar
                                &key precedence muffle-conflicts)
+  "Compute the parsing tables for grammar GRAMMAR and transitions KERNELS.
+PRECEDENCE is as in FIND-PRECEDENCE.  MUFFLE-WARNINGS is one of NIL, T, :SOME
+or a list of the form (sr rr)."
   (declare (list kernels) (type grammar grammar))
   (let ((numkernels (length kernels)))
     (let ((goto (make-array numkernels :initial-element '()))
@@ -954,7 +980,9 @@
                     (print-derives-epsilon nil) (print-first-terminals nil)
                     (print-states nil)
                     (print-goto-graph nil) (print-lookaheads nil))
-
+  "Combines COMPUTE-ALL-LOOKAHEADS and COMPUTE-PARSING-TABLES.
+PRECEDENCE is a list of elements of the form (KEYWORD . (op...)).
+MUFFLE-WARNINGS is one of NIL, T, :SOME or a list of the form (sr rr)."
   (declare (type grammar grammar))
   (let ((kernels (compute-kernels grammar)))
     (compute-all-lookaheads kernels grammar)
@@ -983,6 +1011,10 @@
                      (yacc-parse-error-expected-terminals e)))))
 
 (defun parse-with-lexer (lexer parser)
+"Parse the stream of symbols provided by LEXER using PARSER.
+LEXER is a function of no arguments returning a symbol and a semantic value,
+and should return (VALUES NIL NIL) when the end of input is reached.
+Handle YACC-PARSE-ERROR to provide custom error reporting."
   (declare (type (function () (values symbol t)) lexer))
   (declare (type parser parser))
   (let ((action-array (parser-action parser))
@@ -1091,6 +1123,11 @@
               lists))))
 
 (defmacro define-grammar (name &body body)
+  "DEFINE-GRAMMAR NAME OPTION... PRODUCTION...
+PRODUCTION ::= (SYMBOL RHS...)
+RHS ::= SYMBOL | (SYMBOL... [ACTION])
+Defines the special variable NAME to be a grammar.  Options are as in
+MAKE-GRAMMAR."
   (multiple-value-bind (options make-options productions) (parse-grammar body)
     (declare (ignore make-options))
     `(defparameter ,name
@@ -1100,6 +1137,11 @@
                options))))
 
 (defmacro define-parser (name &body body)
+  "DEFINE-GRAMMAR NAME OPTION... PRODUCTION...
+PRODUCTION ::= (SYMBOL RHS...)
+RHS ::= SYMBOL | (SYMBOL... [ACTION])
+Defines the special variable NAME to be a parser.  Options are as in
+MAKE-GRAMMAR and MAKE-PARSER."
   (multiple-value-bind (options make-options productions) (parse-grammar body)
     `(defparameter ,name
       ',(apply #'make-parser
