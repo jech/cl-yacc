@@ -635,8 +635,9 @@
 
 ;;; Lookaheads
 
-(defun compute-lookaheads (kernel grammar)
-  "Compute the LR(1) lookaheads for all items in KERNEL."
+(defun compute-lookaheads (kernel grammar &optional propagate-only)
+  "Compute the LR(1) lookaheads for all items in KERNEL.
+If PROPAGATE-ONLY is true, ignore spontaneous generation."
   (declare (type kernel kernel) (type grammar grammar))
   (let ((res '()))
     (declare (optimize (speed 3) (space 0)))
@@ -649,7 +650,9 @@
         (map-lr1-collection
          #'(lambda (item)
              (declare (type lr1-item item))
-             (unless (item-dot-right-p item)
+             (unless (or (and propagate-only
+                              (not (eq 'propagate (item-lookahead item))))
+                         (item-dot-right-p item))
                (push (cons i (lr1-item-shift item)) res)))
          j)))
     res))
@@ -658,13 +661,13 @@
   "Compute the LR(1) lookaheads for all the collections in KERNELS."
   (declare (list kernels) (type grammar grammar))
   (setf (item-lookaheads (kernel-item (car kernels))) (list 'eof))
-  (let ((previously-changed kernels)
-        (changed '()))
+  (let ((previously-changed kernels) (changed '())
+        (propagate-only nil))
     (declare (optimize (speed 3) (space 0)))
     (loop
      (dolist (kernel kernels)
        (when (memq kernel previously-changed)
-         (let ((lookaheads (compute-lookaheads kernel grammar)))
+         (let ((lookaheads (compute-lookaheads kernel grammar propagate-only)))
            (declare (list lookaheads))
            (dolist (goto (kernel-gotos kernel))
              (declare (type goto goto))
@@ -694,8 +697,8 @@
                (when new
                  (pushnew target changed)))))))
      (unless changed (return))
-     (psetq previously-changed changed
-            changed '())))
+     (psetq previously-changed changed changed '()
+            propagate-only t)))
   kernels)
 
 (defun print-states (kernels lookaheads &optional (stream *standard-output*))
