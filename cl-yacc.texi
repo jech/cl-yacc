@@ -225,14 +225,14 @@ the associated action, and should be a function; it defaults to
 production will not be fasdumpable.
 @end defun
 
-@defun make-grammar &key name start-symbol terminals productions
+@defun make-grammar @code{&key} name start-symbol terminals productions
 Returns a grammar.  @var{Name} is the name of the grammar (gratuitious
 documentation).  @var{Start-symbol} is the starting symbol,
 @var{terminals} is the list of terminal symbols.  @var{Productions} is
 a list of productions.
 @end defun
 
-@defun make-parser grammar &key discard-memos print-states print-goto-graph print-lookaheads
+@defun make-parser grammar @code{&key} discard-memos print-states print-goto-graph print-lookaheads
 Computes and returns a parser for grammar @var{grammar}.
 @var{discard-memos} specifies whether temporary data associated with
 the grammar should be discarded.  @var{Print-states},
