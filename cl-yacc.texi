@@ -305,9 +305,7 @@ that the input is incorrect.
 If the grammar given to CL-Yacc is ambiguous, a warning of type
 @code{conflict-warning} will be signalled for every conflict as it is
 found, and a warning of type @code{conflict-summary-warning} will be
-signalled at the end of parser generation.  It is possible to discard
-such warnings by @code{handler-bind}-ing at compile time these types
-to @code{muffle-warnings}.
+signalled at the end of parser generation.
 
 @deftp Condition conflict-warning kind state terminal
 Signalled whenever a conflict is found.  @var{Kind} is one of
