@@ -33,12 +33,6 @@
 #-CMU
 (defun required-argument () (error "A required argument was not supplied"))
 
-(defun constantly-error (string)
-  (declare (string string))
-  #'(lambda (&rest ignore)
-      (declare (ignore ignore))
-      (error string)))
-
 (deftype index () '(unsigned-byte 10))
 (deftype signed-index () '(signed-byte 11))
 
