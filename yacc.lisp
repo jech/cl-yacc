@@ -78,6 +78,7 @@
 (defstruct (grammar (:constructor %make-grammar))
   (name nil)
   (terminals '() :type list)
+  (precedence '() :type list)
   (productions '() :type list)
   (%symbols :undefined :type (or list (member :undefined)))
   (derives-epsilon '() :type list)
@@ -85,7 +86,7 @@
   (derives-first-terminal '() :type list))
 
 (defun make-grammar(&key name (start-symbol (required-argument))
-                    terminals productions)
+                    terminals precedence productions)
   (declare (symbol name start-symbol) (list terminals productions))
   (setq productions
         (cons (make-production 's-prime (list start-symbol)
@@ -94,7 +95,8 @@
   (do* ((i 0 (+ i 1)) (ps productions (cdr ps)) (p (car ps) (car ps)))
        ((null ps))
     (setf (production-id p) i))
-  (%make-grammar :name name :terminals terminals :productions productions))
+  (%make-grammar :name name :terminals terminals :precedence precedence
+                 :productions productions))
 
 (defun grammar-discard-memos (grammar)
   (setf (grammar-%symbols grammar) :undefined)
@@ -834,11 +836,12 @@ PRECEDENCE is a list of elements of the form (KEYWORD . (op...))."
     ((member op (cdar precedence)) precedence)
     (t (find-precedence op (cdr precedence)))))
 
-(defun handle-conflict (a1 a2 precedence action-productions i s
+(defun handle-conflict (a1 a2 grammar action-productions id s
                         &optional muffle-conflicts)
-  "Decide what to do with a conflict between A1 and A2 in state I on symbol S.
+  "Decide what to do with a conflict between A1 and A2 in state ID on symbol S.
 Returns three actions: the chosen action, the number of new sr and rr."
-  (declare (type action a1 a2) (type index i) (symbol s))
+  (declare (type action a1 a2) (type grammar grammar)
+           (type index id) (symbol s))
   (when (action-equal-p a1 a2)
     (return-from handle-conflict (values a1 0 0)))
   (when (and (shift-action-p a2) (reduce-action-p a1))
@@ -851,8 +854,8 @@ Returns three actions: the chosen action, the number of new sr and rr."
                (= 3 (length (production-derives p2))))
       (let* ((op1 (cadr (production-derives p1)))
              (op2 (cadr (production-derives p2)))
-             (op1-tail (find-precedence op1 precedence))
-             (op2-tail (find-precedence op2 precedence)))
+             (op1-tail (find-precedence op1 (grammar-precedence grammar)))
+             (op2-tail (find-precedence op2 (grammar-precedence grammar))))
         (when (and (eq s op1) op1-tail op2-tail)
           (cond
             ((eq op1-tail op2-tail)
@@ -873,7 +876,7 @@ Returns three actions: the chosen action, the number of new sr and rr."
              :kind (typecase a1
                      (shift-action :shift-reduce)
                      (t :reduce-reduce))
-             :state i :terminal s
+             :state id :terminal s
              :format-control "~S and ~S~@[ ~_~A~]~@[ ~_~A~]"
              :format-arguments (list a1 a2 p1 p2))))
     (typecase a1
@@ -881,7 +884,7 @@ Returns three actions: the chosen action, the number of new sr and rr."
       (t (values a1 0 1)))))
 
 (defun compute-parsing-tables (kernels grammar
-                               &key precedence muffle-conflicts)
+                               &key muffle-conflicts)
   "Compute the parsing tables for grammar GRAMMAR and transitions KERNELS.
 PRECEDENCE is as in FIND-PRECEDENCE.  MUFFLE-WARNINGS is one of NIL, T, :SOME
 or a list of the form (sr rr)."
@@ -894,17 +897,17 @@ or a list of the form (sr rr)."
           (action-productions '()))
       (flet ((set-action (k symbols a production)
                (push (cons a production) action-productions)
-               (let ((i (kernel-id k)))
+               (let ((id (kernel-id k)))
                  (dolist (s symbols)
-                   (if (assoc s (aref action i))
+                   (if (assoc s (aref action id))
                        (multiple-value-bind (new-action s-r r-r)
                            (handle-conflict
-                            (cdr (assoc s (aref action i)))
-                            a precedence action-productions
-                            i s muffle-conflicts)
-                         (setf (cdr (assoc s (aref action i))) new-action)
+                            (cdr (assoc s (aref action id)))
+                            a grammar action-productions
+                            id s muffle-conflicts)
+                         (setf (cdr (assoc s (aref action id))) new-action)
                          (incf sr-conflicts s-r) (incf rr-conflicts r-r))
-                       (push (cons s a) (aref action i))))))
+                       (push (cons s a) (aref action id))))))
              (set-goto (k symbols target)
                (let ((i (kernel-id k)) (j (kernel-id target)))
                  (dolist (s symbols)
@@ -983,13 +986,11 @@ or a list of the form (sr rr)."
       (%make-parser numkernels goto action))))
 
 (defun make-parser (grammar
-                    &key (discard-memos t)
-                    (precedence '()) (muffle-conflicts nil)
+                    &key (discard-memos t) (muffle-conflicts nil)
                     (print-derives-epsilon nil) (print-first-terminals nil)
                     (print-states nil)
                     (print-goto-graph nil) (print-lookaheads nil))
   "Combines COMPUTE-ALL-LOOKAHEADS and COMPUTE-PARSING-TABLES.
-PRECEDENCE is a list of elements of the form (KEYWORD . (op...)).
 MUFFLE-WARNINGS is one of NIL, T, :SOME or a list of the form (sr rr)."
   (declare (type grammar grammar))
   (let ((kernels (compute-kernels grammar)))
@@ -1002,7 +1003,6 @@ MUFFLE-WARNINGS is one of NIL, T, :SOME or a list of the form (sr rr)."
       (print-states kernels print-lookaheads))
     (prog1
         (compute-parsing-tables kernels grammar
-                                :precedence precedence
                                 :muffle-conflicts muffle-conflicts)
       (when discard-memos (grammar-discard-memos grammar)))))
 
@@ -1097,7 +1097,7 @@ Handle YACC-PARSE-ERROR to provide custom error reporting."
     (dolist (form forms)
       (cond
         ((member (car form)
-                 '(:precedence :muffle-conflicts
+                 '(:muffle-conflicts
                    :print-derives-epsilon :print-first-terminals
                    :print-states :print-goto-graph :print-lookaheads))
          (unless (null (cddr form))

@@ -182,7 +182,7 @@ computed by @code{make-parser} and @code{define-parser}.
 @var{rhs} ::= @code{(} @var{symbol}... [@var{action}] @code{)}
 @end format
 
-Assigns a grammar to the special variable @var{name}.
+Makes grammar be the value of the special variable @var{name}.
 
 Every production is a list of a non-terminal symbol and one or more
 right hand sides.  Every right hand side is either a symbol or a list
@@ -201,15 +201,7 @@ Defines the start symbol of the grammar.  This is required.
 
 @item :terminals
 Defines the list of terminals of the grammar.  This is required.
-@end table
-@end defmac
 
-@defmac define-parser name option... production...
-Assigns a parser to the special variable @var{name}.
-The syntax is the same as that of @code{define-grammar}, except that
-the following additional options are allowed:
-
-@table @code
 @item :precedence
 
 The value of this option should be a list of items of the form
@@ -219,7 +211,15 @@ The value of this option should be a list of items of the form
 @var{Associativity} specifies the associativity of the terminals, and
 earlier items will give their elements a precedence higher than that of
 later ones.
+@end table
+@end defmac
 
+@defmac define-parser name option... production...
+Makes a parser be the value of the special variable @var{name}.
+The syntax is the same as that of @code{define-grammar}, except that
+the following additional options are allowed:
+
+@table @code
 @item :muffle-conflicts
 
 If @code{nil} (the default), a warning is signalled for every
@@ -271,17 +271,16 @@ production (and hence any grammar or parser that it is used by) will
 not be fasdumpable.
 @end defun
 
-@defun make-grammar @akey{} name start-symbol terminals productions
+@defun make-grammar @akey{} name start-symbol terminals precedence productions
 Returns a grammar.  @var{Name} is the name of the grammar (gratuitious
-documentation).  @var{Start-symbol} is the starting symbol,
-@var{terminals} is the list of terminal symbols.  @var{Productions} is
-a list of productions.
+documentation).  @var{Start-symbol}, @var{terminals} and @var{precedence}
+are as in @code{define-grammar}.  @var{Productions} is a list of productions.
 @end defun
 
-@defun make-parser grammar @akey{} discard-memos precedence muffle-conflicts print-derives-epsilon print-first-terminals print-states print-goto-graph print-lookaheads
+@defun make-parser grammar @akey{} discard-memos muffle-conflicts print-derives-epsilon print-first-terminals print-states print-goto-graph print-lookaheads
 Computes and returns a parser for grammar @var{grammar}.
 @var{discard-memos} specifies whether temporary data associated with
-the grammar should be discarded.  @var{Precedence}, @var{muffle-conflicts},
+the grammar should be discarded.  @var{Muffle-conflicts},
 @var{print-derives-epsilon}, @var{print-first-terminals},
 @var{print-states}, @var{print-goto-graph} and @var{print-lookaheads}
 are as in @code{define-parser}.
