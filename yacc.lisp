@@ -25,13 +25,21 @@
            #:yacc-parse-error #:yacc-parse-error-terminal
            #:yacc-parse-error-value #:yacc-parse-error-expected-terminals)
   #+CMU
-  (:import-from #:extensions #:required-argument)
+  (:import-from #:extensions #:required-argument #:memq)
   )
 
 (in-package #:yacc)
 
 #-CMU
 (defun required-argument () (error "A required argument was not supplied"))
+
+#-CMU
+(declaim (inline memq))
+
+#-CMU
+(defun memq (item list)
+  "MEMBER :TEST #'EQ"
+  (member item list :test #'eq))
 
 (deftype index () '(unsigned-byte 10))
 (deftype signed-index () '(signed-byte 11))
@@ -399,7 +407,7 @@
   (subseq (item-derives item) 0 (item-position item)))
 
 (defun item-dot-right (item &optional (n 0))
-  (declare (type signed-index n))
+  (declare (type signed-index n) #+CMU (optimize ext:inhibit-warnings))
   (nthcdr (+ n (item-position item)) (item-derives item)))
 
 (defun item-shift (item &optional (n 1))
@@ -447,7 +455,7 @@
 
 (defparameter *items-closure-hash-threshold* 20
   "The number of elements when items-closure switches to using a hashtable.")
-(declaim (type (unsigned-byte 10) *items-closure-hash-threshold*))
+(declaim (type index *items-closure-hash-threshold*))
 
 (deftype lr1-collection () '(or list hash-table))
 
@@ -480,7 +488,7 @@
 
 (defun lr1-find (item collection)
   "Find an LR(1) item equal to ITEM in COLLECTION, or NIL."
-  (declare (optimize speed))
+  (declare (optimize (speed 3) (space 0)))
   (declare (type item item) (type lr1-collection collection))
   (typecase collection
     (list (find item collection :test #'item-lr1-equal-p))
@@ -530,8 +538,8 @@
   (declare (list items) (type grammar grammar))
   (let ((res '()) (n 0)
         (threshold *items-closure-hash-threshold*))
-    (declare (optimize speed))
-    (declare (type (unsigned-byte 10) n) (type (or list hash-table) res))
+    (declare (optimize (speed 3) (space 0)))
+    (declare (type index n) (type (or list hash-table) res))
     (labels ((add (item)
                (declare (type lr1-item item))
                (unless (lr1-find item res)
@@ -596,7 +604,7 @@
   (let ((p0 (car (grammar-productions grammar))))
     (assert (= 1 (length (production-derives p0))))
     (let ((kernels '()))
-      (declare (optimize speed))
+      (declare (optimize (speed 3) (space 0)))
       (labels
           ((add-goto (kernel symbol)
              (let* ((new-kernel*
@@ -607,7 +615,7 @@
                     (new-goto (and new-kernel
                                    (make-goto symbol new-kernel))))
                (when new-kernel
-                 (unless (member new-kernel kernels :test #'eq)
+                 (unless (memq new-kernel kernels)
                    (add-kernel new-kernel))
                  (unless (member new-goto (kernel-gotos kernel)
                                  :test #'goto-equal-p)
@@ -629,13 +637,12 @@
   "Compute the LR(1) lookaheads for all items in KERNEL."
   (declare (type kernel kernel) (type grammar grammar))
   (let ((res '()))
-    (declare (optimize speed))
+    (declare (optimize (speed 3) (space 0)))
     (declare (list res))
     (dolist (i (kernel-items kernel))
       (let ((j (items-closure
-                (list
-                 (make-lr1-item (item-production i) (item-position i)
-                                'propagate))
+                (list (make-lr1-item (item-production i) (item-position i)
+                                     'propagate))
                 grammar)))
         (map-lr1-collection
          #'(lambda (item)
@@ -651,11 +658,12 @@
   (setf (item-lookaheads (kernel-item (car kernels))) (list 'eof))
   (let ((previously-changed kernels)
         (changed '()))
-    (declare (optimize speed))
+    (declare (optimize (speed 3) (space 0)))
     (loop
      (dolist (kernel kernels)
-       (when (member kernel previously-changed :test #'eq)
+       (when (memq kernel previously-changed)
          (let ((lookaheads (compute-lookaheads kernel grammar)))
+           (declare (list lookaheads))
            (dolist (goto (kernel-gotos kernel))
              (declare (type goto goto))
              (let ((target (goto-target goto)) (new nil))
@@ -664,8 +672,8 @@
                         (let ((i (find item (kernel-items target)
                                        :test #'item-equal-p)))
                           (when i
-                            (unless (member lookahead (item-lookaheads i))
-                              (pushnew lookahead (item-lookaheads i))
+                            (unless (memq lookahead (item-lookaheads i))
+                              (push lookahead (item-lookaheads i))
                               (setq new t))))))
                  (dolist (e lookaheads)
                    (let ((i (car e)) (ni (cdr e)))
