@@ -1,0 +1,325 @@
+\input texinfo @c -*-texinfo-*-
+@c %**start of header
+@setfilename cl-yacc.info
+@settitle The CL-Yacc Manual
+@afourpaper
+@c %**end of header
+
+@dircategory Lisp Programming
+@direntry
+* CL-Yacc: (cl-yacc).                   Common Lisp LALR(1) parser generator.
+@end direntry
+
+@copying
+Copyright @copyright{} 2005 by Juliusz Chroboczek.
+@end copying
+
+@titlepage
+@title The CL-Yacc Manual
+@author Juliusz Chroboczek
+@page
+@vskip 0pt plus 1fill
+CL-Yacc is a LALR(1) parser generator for Common Lisp, somewhat like
+Yacc, GNU Bison, Zebu, lalr.cl or lalr.scm.
+@vskip 0pt plus 1fill
+
+@insertcopying
+
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top, Example, (dir), (dir)
+@top CL-Yacc
+
+CL-Yacc is a LALR(1) parser generator for Common Lisp, somewhat like
+Yacc, GNU Bison, Zebu, lalr.cl or lalr.scm.
+
+@ifhtml
+The latest version of CL-Yacc can be found on 
+@uref{http://www.pps.jussieu.fr/~jch/software/cl-yacc/,the CL-Yacc web page}.
+@end ifhtml
+
+This manual was written by
+@uref{http://www.pps.jussieu.fr/~jch/,,Juliusz Chroboczek}.
+
+@end ifnottex
+
+@menu
+* Example::                     A complete example.
+* Reference::                   Reference.
+* Function index::              
+* Type index::                  
+@end menu
+
+@node Example, Reference, Top, Top
+@chapter A complete example
+
+The following example uses symbols in the @code{yacc} package.
+@lisp
+(use-package 'yacc)
+@end lisp
+
+A parser consumes the output of a lexer, that produces a stream of
+terminals.  CL-Yacc expects the lexer to be a function of no arguments
+(a @dfn{thunk}) that returns two values: the next terminal symbol, and
+the value of the symbol, which will be passed to the action associated
+with a production.  At end of input, the lexer should simply return
+@code{nil}.
+
+Here's a very simple lexer that grabs the tokens from a list:
+@lisp
+(defun list-lexer (list)
+  #'(lambda ()
+      (let ((value (pop list)))
+        (if (null value)
+            (values nil nil)
+            (let ((terminal
+                   (cond ((member value '(+ - * / |(| |)|)) value)
+                         ((integerp value) 'int)
+                         ((symbolp value) 'id)
+                         (t (error "Unexpected value ~S" value)))))
+              (values terminal value))))))
+@end lisp
+
+The parser below implements the following grammar:
+@display
+expression ::= expression @code{+} term
+expression ::= expression @code{-} term
+expression ::= term
+
+term ::= term @code{*} factor
+term ::= term @code{/} factor
+term ::= factor
+
+factor ::= id
+factor ::= int
+factor ::= @code{(} expression @code{)}
+@end display
+
+Except for the very last production, the defaults chosen by CL-Yacc
+for productions are fine.  For the last production, we need to define
+a non-default action @code{k-2-3}.
+
+@lisp
+(eval-when (compile load eval)
+  (defun k-2-3 (a b c) (declare (ignore a c)) b)
+)
+@end lisp
+
+@lisp
+(define-parser *left-expression-parser*
+  (:start-symbol expression)
+  (:terminals (int id + - * / |(| |)|))
+
+  (expression (expression + term)
+              (expression - term)
+              term)
+  (term (term * factor)
+        (term / factor)
+        factor)
+  (factor id
+          int
+          (|(| expression |)| #'k-2-3)))
+@end lisp
+
+The parser is now the value of the special variable
+@code{*left-expression-parser*}, which can be passed to
+@code{parse-with-lexer}.
+@lisp
+(parse-with-lexer (list-lexer '(x * 2 + 3 * y)) *left-expression-parser*)
+    @result{} ((X * 2) + (3 * Y))
+@end lisp
+
+@node Reference, Function index, Example, Top
+@chapter Reference
+
+@menu
+* Running the parser::          
+* Macro interface::             High-level macro interface.
+* Programmatic interface::      Low-level functional interface.
+* Conditions::                  
+@end menu
+
+@node Running the parser, Macro interface, Reference, Reference
+@section Running the parser
+
+The main entry point to the parser is @code{parse-with-lexer}.
+
+@defun parse-with-lexer lexer parser
+Parse the input provided by the lexer @var{lexer} using the parser
+@var{parser}.
+
+The lexer should be a function of no arguments that returns two
+values: the terminal of the next token, and its value.  It should
+return @code{(values nil nil)} when the end of the input is reached.
+
+The parser should be a @code{parser} structure, as computed by
+@code{make-parser} and @code{define-parser}.
+@end defun
+
+@node Macro interface, Programmatic interface, Running the parser, Reference
+@section Macro interface
+
+@defmac define-grammar name option... production...
+@format
+@var{option} ::= @code{(} @var{keyword} @var{value} @code{)}
+@var{production} ::= @var{symbol} @var{rhs}...
+@var{rhs} ::= @var{symbol}
+@var{rhs} ::= @var{symbol}... [@var{action}]
+@end format
+
+Assigns a grammar to the special variable @var{name}.
+
+Every production is a list of a non-terminal symbol and one or more
+right-hand-sides.  Every right hand side is either a symbol or a list
+of symbols.
+
+The action should be a form that evaluates to a function in a null
+lexical environment.  If omitted, it defaults to @code{#'identity} in
+the first form of @var{rhs}, and to @code{#'list} in the second form.
+
+The legal options are:
+@table @code
+@item :start-symbol
+Defines the start symbol of the grammar.  This is required.
+
+@item :terminals
+Defines the list of terminals of the grammar.  This is required.
+@end table
+@end defmac
+
+@defmac define-parser name option... production...
+Assigns a parser to the special variable @var{name}.
+The syntax is the same as that of @code{define-grammar}, except that
+the following additional options are allowed:
+@table @code
+@item :print-states
+Print the computed states.
+
+@item :print-goto-graph
+Print the computed goto graph.
+
+@item :print-lookaheads
+Print the computed states with the full list of associated LR(1) items.
+@end table
+
+@end defmac
+
+@node Programmatic interface, Conditions, Macro interface, Reference
+@section Programmatic interface
+
+The macros @code{define-parser} and @code{define-grammar} expand into
+calls to @code{defparameter}, @code{make-parser}, @code{make-grammar}
+and @code{make-production} with suitable @code{make-load-form} magic
+to ensure that the time consuming parser generation happens at
+compile time rather than at load time.
+
+@defun make-production symbol derives @code{&key} action action-form
+Returns a production for non-terminal @var{symbol} with
+right-hand-side @var{derives} (a list of symbols).  @var{Action} is
+the associated action, and should be a function; it defaults to
+@code{#'list}.  @var{Action-form} should be a form that evaluates to
+@var{action} in a null lexical environment; if null (the default), the
+production will not be fasdumpable.
+@end defun
+
+@defun make-grammar &key name start-symbol terminals productions
+Returns a grammar.  @var{Name} is the name of the grammar (gratuitious
+documentation).  @var{Start-symbol} is the starting symbol,
+@var{terminals} is the list of terminal symbols.  @var{Productions} is
+a list of productions.
+@end defun
+
+@defun make-parser grammar &key discard-memos print-states print-goto-graph print-lookaheads
+Computes and returns a parser for grammar @var{grammar}.
+@var{discard-memos} specifies whether temporary data associated with
+the grammar should be discarded.  @var{Print-states},
+@var{print-goto-graph} and @var{print-lookaheads} are as in
+@code{define-parser}.
+@end defun
+
+@node Conditions,  , Programmatic interface, Reference
+@section Conditions
+
+CL-Yacc may signal warnings at compile time when it finds
+conflicts.  It may also signal an error at parse time when it finds
+that the input is incorrect.
+
+@menu
+* Compile-time::                
+* Runtime::                     
+@end menu
+
+@node Compile-time, Runtime, Conditions, Conditions
+@subsection Compile-time conditions
+
+If the grammar given to CL-Yacc is ambiguous, a warning of type
+@code{conflict-warning} will be signalled for every conflict it finds,
+and a warning of type @code{conflict-summary-warning} will be
+signalled at the end of parser generation.  It is possible to discard
+such warnings by @code{handler-bind}-ing at compile time these types
+to @code{muffle-warnings}.
+
+@deftp Condition conflict-warning kind state terminal
+Signalled whenever a conflict is found.  @var{Kind} is one of
+@code{:shift-reduce} or @code{:reduce-reduce}.  @var{State} (an
+integer) and @var{terminal} (a symbol) are the state and terminal for
+which the conflict arises.
+@end deftp
+
+@deftp Condition conflict-summary-warning shift-reduce reduce-reduce
+Signalled at the end of parser generation if there were any
+conflicts.  @var{Shift-reduce} and @var{reduce-reduce} are two
+integers that indicate how many conflicts were found.
+@end deftp
+
+@node Runtime,  , Compile-time, Conditions
+@subsection Runtime conditions
+
+If the output cannot be parsed, the parser will signal a condition of
+type @code{yacc-parse-error}.  It should be possible to invoke a
+restart from a handler for @code{yacc-parse-error} to trigger error
+recovery, but this hasn't been implemented yet.
+
+@deftp Condition yacc-parse-error terminal value expected-terminals
+Signalled whenever the input cannot be parsed.  @var{Terminal} is the
+terminal that couldn't be accepted; @var{value} is its value.
+@var{expected-terminals} is the list of terminals that could have been
+accepted in that state.
+@end deftp
+
+@unnumbered Copying
+
+@quotation
+Copyright @copyright{} 2005 by Juliusz Chroboczek
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+@end quotation
+
+@node Function index, Type index, Reference, Top
+@unnumbered Function index
+@printindex fn
+
+@node Type index,  , Function index, Top
+@unnumbered Type index
+@printindex tp
+
+@bye
