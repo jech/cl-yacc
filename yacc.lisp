@@ -21,7 +21,7 @@
 (defpackage #:yacc
   (:use #:common-lisp)
   (:export #:make-production #:make-grammar #:make-parser #:parse-with-lexer
-           #:define-grammar #:define-parser
+           #:define-grammar #:define-parser #:yacc-eof-symbol
            #:yacc-parse-error #:yacc-parse-error-terminal
            #:yacc-parse-error-value #:yacc-parse-error-expected-terminals)
   #+CMU
@@ -660,7 +660,7 @@ If PROPAGATE-ONLY is true, ignore spontaneous generation."
 (defun compute-all-lookaheads (kernels grammar)
   "Compute the LR(1) lookaheads for all the collections in KERNELS."
   (declare (list kernels) (type grammar grammar))
-  (setf (item-lookaheads (kernel-item (car kernels))) (list 'eof))
+  (setf (item-lookaheads (kernel-item (car kernels))) (list 'yacc-eof-symbol))
   (let ((previously-changed kernels) (changed '())
         (propagate-only nil))
     (declare (optimize (speed 3) (space 0)))
@@ -939,8 +939,8 @@ or a list of the form (sr rr)."
                  (cond
                    ((and (eq 's-prime (item-symbol item))
                          (= 1 (item-position item)))
-                    (when (member 'eof la)
-                      (set-action k (list 'eof)
+                    (when (member 'yacc-eof-symbol la)
+                      (set-action k (list 'yacc-eof-symbol)
                                   (make-accept-action)
                                   (item-production item))))
                    (t
@@ -1051,7 +1051,7 @@ Handle YACC-PARSE-ERROR to provide custom error reporting."
       (let ((stack (list 0)) symbol value)
         (flet ((next-symbol ()
                  (multiple-value-bind (s v) (funcall lexer)
-                   (setq symbol (or s 'eof) value v))))
+                   (setq symbol (or s 'yacc-eof-symbol) value v))))
           (next-symbol)
           (loop
            (let* ((state (car stack))
