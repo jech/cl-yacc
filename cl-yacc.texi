@@ -53,7 +53,7 @@ This manual was written by
 @menu
 * Example::                     A complete example.
 * Reference::                   Reference.
-* Function index::              
+* Function index::
 * Type index::                  
 @end menu
 
@@ -161,8 +161,8 @@ The parser is now the value of the special variable
 @menu
 * Invoking a parser::           How to invoke a parser.
 * Macro interface::             High-level macro interface.
-* Programmatic interface::      Low-level functional interface.
-* Conditions::                  
+* Functional interface::        Low-leve functional interface.
+* Conditions::                  Conditions signalled by CL-Yacc.
 @end menu
 
 @node Invoking a parser, Macro interface, Reference, Reference
@@ -184,7 +184,7 @@ The value of @var{parser} should be a @code{parser} structure, as
 computed by @code{make-parser} and @code{define-parser}.
 @end defun
 
-@node Macro interface, Programmatic interface, Invoking a parser, Reference
+@node Macro interface, Functional interface, Invoking a parser, Reference
 @section Macro interface
 
 @defmac define-grammar name option... production...
@@ -263,8 +263,8 @@ lookaheads.
 @end table
 @end defmac
 
-@node Programmatic interface, Conditions, Macro interface, Reference
-@section Programmatic interface
+@node Functional interface, Conditions, Macro interface, Reference
+@section Functional interface
 
 The macros @code{define-parser} and @code{define-grammar} expand into
 calls to @code{defparameter}, @code{make-parser}, @code{make-grammar}
@@ -272,7 +272,12 @@ and @code{make-production} with suitable @code{make-load-form} magic
 to ensure that the time consuming parser generation happens at
 compile time rather than at load time.  The underlying functions are
 exported in case you want to design a different syntax for grammars,
-or generate grammars programmatically.
+or generate grammars automatically.
+
+The symbol @code{yacc-eof-symbol} is used for marking the EOF token;
+it should never appear in a production, and never be returned by a
+lexer.  It is exported for the sake of condition handlers, which might
+find it embedded within parse errors.
 
 @defun make-production symbol derives @akey{} action action-form
 Returns a production for non-terminal @var{symbol} with
@@ -299,7 +304,7 @@ the grammar should be discarded.  @var{Muffle-conflicts},
 are as in @code{define-parser}.
 @end defun
 
-@node Conditions,  , Programmatic interface, Reference
+@node Conditions,  , Functional interface, Reference
 @section Conditions
 
 CL-Yacc may signal warnings at compile time when it finds
@@ -307,8 +312,8 @@ conflicts.  It may also signal an error at parse time when it finds
 that the input is incorrect.
 
 @menu
-* Compile-time::                
-* Runtime::                     
+* Compile-time::                Compile-time conditions.
+* Runtime::                     Run-time conditions.
 @end menu
 
 @node Compile-time, Runtime, Conditions, Conditions
