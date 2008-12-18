@@ -102,7 +102,7 @@
         (parser-epsilon-right (make-parser (make-grammar-epsilon-right))))
     (flet ((parse (parser list) (parse-with-lexer (list-lexer list) parser)))
       (expect (parse parser-4-31 '(lb id + id * id rb))
-              '(LB (ID + (ID * ID)) RB))
+              '(lb (id + (id * id)) rb))
       (expect (parse parser-4-31 '(lb id * id + id rb))
               '(lb ((id * id) + id) rb))
       (expect (parse parser-4-20 '(* id = * * id))
