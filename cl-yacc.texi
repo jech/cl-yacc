@@ -363,7 +363,7 @@ for their help with implementing CL-Yacc.
 @unnumbered Copying
 
 @quotation
-Copyright @copyright{} 2005 by Juliusz Chroboczek
+Copyright @copyright{} 2005--2008 by Juliusz Chroboczek
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
