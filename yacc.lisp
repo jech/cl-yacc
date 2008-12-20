@@ -21,7 +21,7 @@
 (defpackage #:yacc
   (:use #:common-lisp)
   (:export #:make-production #:make-grammar #:make-parser #:parse-with-lexer
-           #:define-grammar #:define-parser #:yacc-eof-symbol
+           #:define-grammar #:define-parser
            #:yacc-parse-error #:yacc-parse-error-terminal
            #:yacc-parse-error-value #:yacc-parse-error-expected-terminals)
   #+CMU
@@ -1081,12 +1081,17 @@ Handle YACC-PARSE-ERROR to provide custom error reporting."
                (error-action
                 (error (make-condition
                         'yacc-parse-error
-                        :terminal symbol :value value
+                        :terminal (if (eq symbol 'yacc-eof-symbol) nil symbol)
+                        :value value
                         :expected-terminals
-                        (mapcan #'(lambda (e)
-                                    (and (not (error-action-p (cdr e)))
-                                         (list (car e))))
-                                (aref action-array state)))))
+                        (mapcan
+                         #'(lambda (e)
+                             (and (cdr e)
+                                  (list
+                                   (if (eq (car e) 'yacc-eof-symbol)
+                                       nil
+                                       (car e)))))
+                         (aref action-array state)))))
                ))))))))
 
 ;;; User interface

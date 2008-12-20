@@ -277,11 +277,6 @@ compile time rather than at load time.  The underlying functions are
 exported in case you want to design a different syntax for grammars,
 or generate grammars automatically.
 
-The symbol @code{yacc-eof-symbol} is used for marking the EOF token;
-it should never appear in a production, and never be returned by a
-lexer.  It is exported for the sake of condition handlers, which might
-find it embedded within parse errors.
-
 @defun make-production symbol derives @akey{} action action-form
 Returns a production for non-terminal @var{symbol} with
 right-hand-side @var{derives} (a list of symbols).  @var{Action} is
