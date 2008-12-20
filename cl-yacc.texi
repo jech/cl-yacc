@@ -195,7 +195,8 @@ computed by @code{make-parser} and @code{define-parser}.
 @var{rhs} ::= @code{(} @var{symbol}... [@var{action}] @code{)}
 @end format
 
-Makes grammar be the value of the special variable @var{name}.
+Generates a grammar and binds it to the special variable @var{name}.
+This has the side effect of globally proclaiming @var{name} special.
 
 Every production is a list of a non-terminal symbol and one or more
 right hand sides.  Every right hand side is either a symbol or a list
@@ -228,7 +229,9 @@ later ones.
 @end defmac
 
 @defmac define-parser name option... production...
-Makes a parser be the value of the special variable @var{name}.
+Generates a parser and binds it to the special variable @var{name}.
+This has the side effect of globally proclaiming @var{name} special.
+
 The syntax is the same as that of @code{define-grammar}, except that
 the following additional options are allowed:
 
@@ -354,8 +357,8 @@ could have been accepted in that state.
 
 @unnumbered Acknowledgements
 
-I am grateful to Marc Zeitoun, Antonio Bucciarelli and especially Guy
-Cousineau for their help with implementing CL-Yacc.
+I am grateful to Marc Zeitoun, Antonio Bucciarelli and Guy Cousineau
+for their help with implementing CL-Yacc.
 
 @unnumbered Copying
 
