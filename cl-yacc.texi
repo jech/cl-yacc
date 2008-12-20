@@ -114,7 +114,7 @@ For building a Lisp-like parse tree with this grammar, we will need
 two @emph{ad hoc} actions:
 
 @lisp
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defun i2p (a b c) 
     "Infix to prefix"
     (list b a c))

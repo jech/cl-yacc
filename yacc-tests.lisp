@@ -148,7 +148,7 @@
            (vector-push-extend c buffer))))
       (t (error "Lexing error")))))
 
-(eval-when (compile load eval)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defun k-2-3 (a b c) (declare (ignore a c)) b)
 )
 
