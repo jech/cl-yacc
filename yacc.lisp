@@ -1142,7 +1142,8 @@ RHS ::= SYMBOL | (SYMBOL... [ACTION])
 Defines the special variable NAME to be a grammar.  Options are as in
 MAKE-GRAMMAR."
   (multiple-value-bind (options make-options productions) (parse-grammar body)
-    (declare (ignore make-options))
+    (unless (null make-options)
+      (warn "DEFINE-GRAMMAR ignores options ~S" make-options))
     `(defparameter ,name
       ',(apply #'make-grammar
                :name name
