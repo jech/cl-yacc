@@ -41,8 +41,8 @@
   "MEMBER :TEST #'EQ"
   (member item list :test #'eq))
 
-(deftype index () '(unsigned-byte 10))
-(deftype signed-index () '(signed-byte 11))
+(deftype index () '(unsigned-byte 14))
+(deftype signed-index () '(signed-byte 15))
 
 ;;; Productions
 
