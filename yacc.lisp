@@ -505,6 +505,13 @@
     (hash-table (maphash #'(lambda (k v) (declare (ignore k)) (funcall f v))
                          collection))))
 
+(defmacro do-lr1-collection ((var collection) &body body)
+  (let ((c-name (gensym "COLLECTION")) (f-name (gensym "DO-LR1-BODY")))
+    `(let ((,c-name ,collection))
+       (flet ((,f-name (,var) (declare (type lr1-item ,var)) ,@body))
+         (declare (dynamic-extent #',f-name))
+         (map-lr1-collection #',f-name ,c-name)))))
+
 (declaim (inline lr1-add))
 
 (defun lr1-add (item collection)
@@ -647,14 +654,11 @@ If PROPAGATE-ONLY is true, ignore spontaneous generation."
                 (list (make-lr1-item (item-production i) (item-position i)
                                      'propagate))
                 grammar)))
-        (map-lr1-collection
-         #'(lambda (item)
-             (declare (type lr1-item item))
-             (unless (or (and propagate-only
-                              (not (eq 'propagate (item-lookahead item))))
-                         (item-dot-right-p item))
-               (push (cons i (lr1-item-shift item)) res)))
-         j)))
+        (do-lr1-collection (item j)
+          (unless (or (and propagate-only
+                           (not (eq 'propagate (item-lookahead item))))
+                      (item-dot-right-p item))
+            (push (cons i (lr1-item-shift item)) res)))))
     res))
 
 (defun compute-all-lookaheads (kernels grammar)
