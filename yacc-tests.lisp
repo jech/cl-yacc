@@ -25,11 +25,11 @@
 (in-package #:yacc-tests)
 
 (defmacro expect (form expected)
-  (let ((value (gensym "VALUE")))
-    `(let ((,value ,form))
-      (unless (equal ,value ,expected)
+  (let ((value (gensym "VALUE")) (e-value (gensym "EXPECTED")))
+    `(let ((,value ,form) (,e-value ,expected))
+      (unless (equal ,value ,e-value)
         (error "Test failed: ~S yielded ~S, expected ~S"
-               ',form ,value ,expected)))))
+               ',form ,value ,e-value)))))
 
 (defmacro expect-condition (class &body body)
   (let ((name (gensym "EXPECT-CONDITION")))
@@ -37,6 +37,9 @@
     (handler-case (progn ,@body)
       (,class () (return-from ,name nil)))
     (error "~S didn't signal a ~S" ',body ',class))))
+
+;;;; Tests of the low-level interface, which is not meant for human beings.
+;;;; See the high-level interface below if you are looking for examples.
 
 ;;; A trivial lexer
 
@@ -117,7 +120,7 @@
       (expect (parse parser-epsilon-right '(id id)) '(id (id nil)))
       t)))
 
-;;; Some higher-level tests
+;;;; Tests of the high-level interface
 
 (defun digitp (c) (member c '(#\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9 #\0)))
 
@@ -125,8 +128,7 @@
   (let ((c (read-char stream nil nil)))
     (cond
       ((null c) (values nil nil))
-      ((eql c #\Newline) (values nil nil))
-      ((member c '(#\Space #\Tab)) (simple-lexer stream))
+      ((member c '(#\Space #\Tab #\Newline)) (simple-lexer stream))
       ((member c '(#\+ #\- #\* #\/ #\( #\)))
        (let ((v (intern (string c))))
          (values v v)))
@@ -167,6 +169,20 @@
    factor)
 
   (factor
+   id
+   int
+   (|(| expression |)| #'k-2-3)))
+
+(define-parser *ambiguous-expression-parser*
+  (:start-symbol expression)
+  (:terminals (int id + - * / |(| |)|))
+  (:muffle-conflicts (16 0))
+
+  (expression
+   (expression + expression)
+   (expression - expression)
+   (expression * expression)
+   (expression / expression)
    id
    int
    (|(| expression |)| #'k-2-3)))
@@ -229,11 +245,15 @@
           (expect (parse *precedence-left-expression-parser* e) v))
         (let ((v '("x" + ((5 / (3 * ((12 + "y") / 3))) + "z"))))
           (expect (parse *precedence-right-expression-parser* e) v))
+        (let ((v '("x" + (5 / (3 * ((12 + "y") / (3 + "z")))))))
+          (expect (parse *ambiguous-expression-parser* e) v))
         (expect-condition yacc-parse-error
           (parse *precedence-nonassoc-expression-parser* e)))
       (dolist (e '("5/3*(" "5/3)"))
         (expect-condition yacc-parse-error
           (parse *left-expression-parser* e))
+        (expect-condition yacc-parse-error
+          (parse *ambiguous-expression-parser* e))
         (expect-condition yacc-parse-error
           (parse *precedence-left-expression-parser* e))
         (expect-condition yacc-parse-error
