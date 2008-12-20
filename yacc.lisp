@@ -809,8 +809,7 @@ If PROPAGATE-ONLY is true, ignore spontaneous generation."
    (state :initarg :state :reader conflict-warning-state)
    (terminal :initarg :terminal :reader conflict-warning-terminal))
   (:report (lambda (w stream)
-             (format stream "~A conflict on terminal ~S in state ~A, ~
-                             ~_~?"
+             (format stream "~A conflict on terminal ~S in state ~A, ~_~?"
                      (case (conflict-warning-kind w)
                        (:shift-reduce "Shift/Reduce")
                        (:reduce-reduce "Reduce/Reduce")
@@ -1029,7 +1028,7 @@ MUFFLE-WARNINGS is one of NIL, T, :SOME or a list of the form (sr rr)."
    (expected-terminals :initarg :expected-terminals
                        :reader yacc-parse-error-expected-terminals))
   (:report (lambda (e stream)
-             (format stream "Unexpected terminal ~S (value ~S)~@:_~
+             (format stream "Unexpected terminal ~S (value ~S). ~@:_~
                              Expected one of: ~S"
                      (yacc-parse-error-terminal e)
                      (yacc-parse-error-value e)
