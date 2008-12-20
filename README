@@ -4,8 +4,11 @@
 > (load *)
 > (yacc-tests:tests)
 
+Note that you really must compile yacc-tests.lisp to a file in order to
+test the fasdumping machinery.
+
 The most recent version should be available from
 
-  http://www.pps.jussieu.fr/~jch/software/cl-yacc/
+    http://www.pps.jussieu.fr/~jch/software/cl-yacc/
 
                                         Juliusz Chroboczek
