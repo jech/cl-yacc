@@ -357,7 +357,7 @@ could have been accepted in that state.
 
 @unnumbered Acknowledgements
 
-I am grateful to Marc Zeitoun, Antonio Bucciarelli and Guy Cousineau
+I am grateful to Antonio Bucciarelli, Guy Cousineau and Marc Zeitoun
 for their help with implementing CL-Yacc.
 
 @unnumbered Copying
