@@ -778,11 +778,8 @@ If PROPAGATE-ONLY is true, ignore spontaneous generation."
                           make-shift-action (state)))
   (state (required-argument) :type index))
 
-(defstruct (error-action (:include action))
-  )
-
 (defun action-equal-p (a1 a2)
-  (declare (type action a1 a2))
+  (declare (type (or null action) a1 a2))
   (or (eq a1 a2)
       (and
        (eq (type-of a1) (type-of a2))
@@ -878,7 +875,7 @@ Returns three actions: the chosen action, the number of new sr and rr."
                (ecase (caar op1-tail)
                  ((:left) (values a2 0 0))
                  ((:right) (values a1 0 0))
-                 ((:nonassoc) (values (make-error-action) 0 0)))))
+                 ((:nonassoc) (values nil 0 0)))))
             (t
              (return-from handle-conflict
                (if (tailp op2-tail (cdr op1-tail))
@@ -915,15 +912,18 @@ or a list of the form (sr rr)."
                (let ((id (kernel-id k)))
                  (dolist (s symbols)
                    (declare (symbol s))
-                   (if (assoc s (aref action id))
-                       (multiple-value-bind (new-action s-r r-r)
-                           (handle-conflict
-                            (cdr (assoc s (aref action id)))
-                            a grammar action-productions
-                            id s muffle-conflicts)
-                         (setf (cdr (assoc s (aref action id))) new-action)
-                         (incf sr-conflicts s-r) (incf rr-conflicts r-r))
-                       (push (cons s a) (aref action id))))))
+                   (let ((s-a (assoc s (aref action id))))
+                     (cond
+                       ((cdr s-a)
+                        (multiple-value-bind (new-action s-r r-r)
+                            (handle-conflict
+                             (cdr s-a) a grammar action-productions
+                             id s muffle-conflicts)
+                          (setf (cdr s-a) new-action)
+                          (incf sr-conflicts s-r) (incf rr-conflicts r-r)))
+                       (s-a
+                        (setf (cdr s-a) a))
+                       (t (push (cons s a) (aref action id))))))))
              (set-goto (k symbols target)
                (let ((i (kernel-id k)) (j (kernel-id target)))
                  (dolist (s symbols)
@@ -1048,8 +1048,7 @@ Handle YACC-PARSE-ERROR to provide custom error reporting."
         (goto-array (parser-goto parser)))
     (flet ((action (i a)
              (declare (type index i) (symbol a))
-             (or (cdr (assoc a (aref action-array i)))
-                 (make-error-action)))
+             (cdr (assoc a (aref action-array i))))
            (goto (i a)
              (declare (type index i) (symbol a))
              (or (cdr (assoc a (aref goto-array i)))
@@ -1078,7 +1077,7 @@ Handle YACC-PARSE-ERROR to provide custom error reporting."
                (accept-action
                 (pop stack)
                 (return (pop stack)))
-               (error-action
+               (null
                 (error (make-condition
                         'yacc-parse-error
                         :terminal (if (eq symbol 'yacc-eof-symbol) nil symbol)
@@ -1199,10 +1198,6 @@ MAKE-GRAMMAR and MAKE-PARSER."
    `(make-reduce-action ',(reduce-action-symbol a) ',(reduce-action-length a))
    `(setf (reduce-action-action-form ,a) ',(reduce-action-action-form a)
           (reduce-action-action ,a) (eval ',(reduce-action-action-form a)))))
-
-(defmethod make-load-form ((a error-action) &optional env)
-  (declare (ignore env))
-  `(make-error-action))
 
 (defmethod make-load-form ((a shift-action) &optional env)
   (declare (ignore env))
