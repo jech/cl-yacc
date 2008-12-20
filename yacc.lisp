@@ -1006,8 +1006,11 @@ or a list of the form (sr rr)."
                     (print-derives-epsilon nil) (print-first-terminals nil)
                     (print-states nil)
                     (print-goto-graph nil) (print-lookaheads nil))
-  "Combines COMPUTE-ALL-LOOKAHEADS and COMPUTE-PARSING-TABLES.
-MUFFLE-WARNINGS is one of NIL, T, :SOME or a list of the form (sr rr)."
+  "Returns a parser for the given grammar.
+If MUFFLE-CONFLICTS is NIL, then a warning will be signaled for all conflicts.
+If it is T, then no warnings will be signaled.  If it is a list of the form
+(SR SS), then a warning will be signaled unless there are exactly SR
+shift-reduce conflicts and SS shift-shift conflicts."
   (declare (type grammar grammar))
   (let ((kernels (compute-kernels grammar)))
     (compute-all-lookaheads kernels grammar)
