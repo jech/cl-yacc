@@ -911,6 +911,7 @@ or a list of the form (sr rr)."
           (sr-conflicts 0) (rr-conflicts 0)
           (epsilon-productions (grammar-epsilon-productions grammar))
           (action-productions '()))
+      (declare (fixnum sr-conflicts rr-conflicts))
       (flet ((set-action (k symbols a production)
                (push (cons a production) action-productions)
                (let ((id (kernel-id k)))
@@ -931,6 +932,7 @@ or a list of the form (sr rr)."
              (set-goto (k symbols target)
                (let ((i (kernel-id k)) (j (kernel-id target)))
                  (dolist (s symbols)
+                   (declare (symbol s))
                    (let ((e (assoc s (aref goto i))))
                      (when e
                        (assert (eq j (cdr e)))
