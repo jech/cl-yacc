@@ -7,6 +7,9 @@
 Note that you really must compile yacc-tests.lisp to a file in order to
 test the fasdumping machinery.
 
+Complete documentation is provided in texinfo format in ``cl-yacc.texi'',
+and you will find a complete example in the file ``calculator.lisp''.
+
 The most recent version should be available from
 
     http://www.pps.jussieu.fr/~jch/software/cl-yacc/
