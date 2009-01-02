@@ -70,7 +70,7 @@ A parser consumes the output of a lexer, that produces a stream of
 terminals.  CL-Yacc expects the lexer to be a function of no arguments
 (a @dfn{thunk}) that returns two values: the next terminal symbol, and
 the value of the symbol, which will be passed to the action associated
-with a production.  At end of input, the lexer should simply return
+with a production.  At the end of the input, the lexer should return
 @code{nil}.
 
 A very simple lexer that grabs tokens from a list:
@@ -105,13 +105,14 @@ term ::= @code{(} expression @code{)}
 @end display
 
 As this grammar is ambiguous, we need to specify the precedence and
-associativity of the operators. The operators @code{*} and @code{/}
-will have the highest precedence, @code{+} and @code{-} will have a
-lower one.  All operators will be left-associative.
+associativity of the operators.  The operators @code{*} and @code{/}
+will have the highest precedence, @code{+} and @code{-} will have
+a lower one.  All operators will be left-associative.
 
-CL-Yacc provides default semantic actions that are often adequate.
-For building a Lisp-like parse tree with this grammar, we will need
-two @emph{ad hoc} actions:
+If no semantic action is specified, CL-Yacc provides default actions
+which are either @code{#'list} or @code{#'identity}, depending on how
+a production is written.  For building a Lisp-like parse tree with
+this grammar, we will need two additional actions:
 
 @lisp
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -120,6 +121,7 @@ two @emph{ad hoc} actions:
     (list b a c))
 
   (defun k-2-3 (a b c)
+    "Second out of three"
     (declare (ignore a c))
     b)
 )
@@ -146,8 +148,8 @@ The parser definition itself:
    (|(| expression |)| #'k-2-3)))
 @end lisp
 
-The parser is now the value of the special variable
-@code{*expression-parser*}, which can be passed to
+After loading this code, the parser is the value of the special
+variable @code{*expression-parser*}, which can be passed to
 @code{parse-with-lexer}:
 
 @lisp
@@ -175,10 +177,10 @@ Parse the input provided by the lexer @var{lexer} using the parser
 @var{parser}.
 
 The value of @var{lexer} should be a function of no arguments that
-returns two values: the terminal symbol of the next token (a non-null
-symbol), and its value (anything that the associated productions can
-take as argument).  It should return @code{(values nil nil)} when the
-end of the input is reached.
+returns two values: the terminal symbol corresponding to the next
+token (a non-null symbol), and its value (anything that the associated
+actions can take as argument).  It should return @code{(values nil
+nil)} when the end of the input is reached.
 
 The value of @var{parser} should be a @code{parser} structure, as
 computed by @code{make-parser} and @code{define-parser}.
@@ -199,8 +201,8 @@ Generates a grammar and binds it to the special variable @var{name}.
 This has the side effect of globally proclaiming @var{name} special.
 
 Every production is a list of a non-terminal symbol and one or more
-right hand sides.  Every right hand side is either a symbol or a list
-of symbols.
+right hand sides.  Every right hand side is either a symbol, or a list
+of symbols optionally followed with an action.
 
 The action should be a non-atomic form that evaluates to a function in
 a null lexical environment.  If omitted, it defaults to
@@ -211,7 +213,7 @@ The legal options are:
 
 @table @code
 @item :start-symbol
-Defines the start symbol of the grammar.  This is required.
+Defines the starting symbol of the grammar.  This is required.
 
 @item :terminals
 Defines the list of terminals of the grammar.  This is required.
@@ -251,8 +253,8 @@ If true, print the list of nonterminal symbols that derive the empty
 string.
 
 @item :print-first-terminals
-If true, print for every nonterminal symbol the list of terminals that
-it may start with.
+If true, print, for every nonterminal symbol, the list of terminals
+that it may start with.
 
 @item :print-states
 If true, print the computed kernels of LR(0) items.
@@ -261,7 +263,7 @@ If true, print the computed kernels of LR(0) items.
 If true, print the computed goto graph.
 
 @item :print-lookaheads
-If true, print the computed kernels of LR(0) items with their
+If true, print the computed kernels of LR(0) items together with their
 lookaheads.
 @end table
 @end defmac
@@ -283,8 +285,8 @@ right-hand-side @var{derives} (a list of symbols).  @var{Action} is
 the associated action, and should be a function; it defaults to
 @code{#'list}.  @var{Action-form} should be a form that evaluates to
 @var{action} in a null lexical environment; if null (the default), the
-production (and hence any grammar or parser that it is used by) will
-not be fasdumpable.
+production (and hence any grammar or parser that uses it) will not be
+fasdumpable.
 @end defun
 
 @defun make-grammar @akey{} name start-symbol terminals precedence productions
