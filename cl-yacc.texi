@@ -335,6 +335,11 @@ Signalled at the end of parser generation if there were any conflicts.
 how many conflicts were found.
 @end deftp
 
+@deftp Condition yacc-compile-warning
+A superclass of @code{conflict-warning} and @code{conflict-summary-warning},
+and a convenient place to hook your own condition types.
+@end deftp
+
 @node Runtime,  , Compile-time, Conditions
 @subsection Runtime conditions
 
@@ -348,6 +353,11 @@ Signalled whenever the input cannot be parsed.  The symbol
 @var{terminal} is the terminal that couldn't be accepted; @var{value}
 is its value.  @var{Expected-terminals} is the list of terminals that
 could have been accepted in that state.
+@end deftp
+
+@deftp Condition yacc-runtime-error
+A superclass of @code{yacc-parse-error}, and a convenient place to
+hook your own condition types.
 @end deftp
 
 @unnumbered Acknowledgements
