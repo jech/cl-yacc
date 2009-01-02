@@ -22,7 +22,8 @@
   (:use #:common-lisp)
   (:export #:make-production #:make-grammar #:make-parser #:parse-with-lexer
            #:define-grammar #:define-parser
-           #:yacc-parse-error #:yacc-parse-error-terminal
+           #:yacc-compile-warning #:conflict-warning #:conflict-summary-warning
+           #:yacc-runtime-error #:yacc-parse-error #:yacc-parse-error-terminal
            #:yacc-parse-error-value #:yacc-parse-error-expected-terminals)
   #+CMU
   (:import-from #:extensions #:required-argument #:memq)
@@ -801,7 +802,10 @@ If PROPAGATE-ONLY is true, ignore spontaneous generation."
       (shift-action
        (format s "~D" (shift-action-state a))))))
 
-(define-condition conflict-warning (simple-warning)
+(define-condition yacc-compile-warning (warning)
+  ())
+
+(define-condition conflict-warning (yacc-compile-warning simple-warning)
   ((kind :initarg :kind :reader conflict-warning-kind)
    (state :initarg :state :reader conflict-warning-state)
    (terminal :initarg :terminal :reader conflict-warning-terminal))
@@ -816,7 +820,7 @@ If PROPAGATE-ONLY is true, ignore spontaneous generation."
                      (simple-condition-format-control w)
                      (simple-condition-format-arguments w)))))
 
-(define-condition conflict-summary-warning (warning)
+(define-condition conflict-summary-warning (yacc-compile-warning)
   ((shift-reduce :initarg :shift-reduce
                  :reader conflict-summary-warning-shift-reduce)
    (reduce-reduce :initarg :reduce-reduce
@@ -1025,7 +1029,11 @@ shift-reduce conflicts and SS shift-shift conflicts."
                                 :muffle-conflicts muffle-conflicts)
       (when discard-memos (grammar-discard-memos grammar)))))
 
-(define-condition yacc-parse-error (error)
+(define-condition yacc-runtime-error (error)
+  ()
+)
+
+(define-condition yacc-parse-error (yacc-runtime-error)
   ((terminal :initarg :terminal :reader yacc-parse-error-terminal)
    (value :initarg :value :reader yacc-parse-error-value)
    (expected-terminals :initarg :expected-terminals
