@@ -1,0 +1,13 @@
+3 January 2008: CL-Yacc 0.3
+
+  * Kill YACC-EOF-SYMBOL, use NIL instead.
+  * Add abstract condition types.
+  * Add a full example (calculator.lisp).
+
+
+8 December 2005: CL-Yacc 0.2
+
+  * Export YACC-EOF-SYMBOL.
+
+
+4 April 2005: CL-Yacc 0.1
