@@ -14,6 +14,8 @@
 Copyright @copyright{} 2005--2008 by Juliusz Chroboczek.
 @end copying
 
+@syncodeindex tp fn
+
 @macro akey {}
 @t{&key}
 @end macro
@@ -53,8 +55,7 @@ This manual was written by
 @menu
 * Example::                     A complete example.
 * Reference::                   Reference.
-* Function index::
-* Type index::                  
+* Index::                       Index.
 @end menu
 
 @node Example, Reference, Top, Top
@@ -157,7 +158,7 @@ variable @code{*expression-parser*}, which can be passed to
     @result{} (+ (* X (- (- 2))) (* 3 Y))
 @end lisp
 
-@node Reference, Function index, Example, Top
+@node Reference, Index, Example, Top
 @chapter Reference
 
 @menu
@@ -391,12 +392,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 @end quotation
 
-@node Function index, Type index, Reference, Top
-@unnumbered Function index
+@node Index,  , Reference, Top
+@unnumbered Index
 @printindex fn
-
-@node Type index,  , Function index, Top
-@unnumbered Type index
-@printindex tp
 
 @bye
