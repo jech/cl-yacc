@@ -64,7 +64,7 @@ This manual was written by
 CL-Yacc exports its symbols from the package @code{yacc}:
 
 @lisp
-(use-package 'yacc)
+(use-package '#:yacc)
 @end lisp
 
 A parser consumes the output of a lexer, that produces a stream of
