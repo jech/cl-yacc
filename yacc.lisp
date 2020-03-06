@@ -329,6 +329,10 @@
              (:conc-name item-))
   (lookahead (required-argument) :type symbol))
 
+(declaim (inline item-derives item-symbol item-action
+                 item-dot-right-p item-dot-right item-dot-symbol
+                 item-lr1-equal-p item-lr1-hash-value item-equal-p))
+
 (defun print-item (i s d)
   (declare (type item i) (stream s) (ignore d))
   (print-unreadable-object (i s :type t)
@@ -336,10 +340,6 @@
             (item-symbol i) (item-dot-left i) (item-dot-right i))
     (when (lr1-item-p i)
       (format s " (~S)" (item-lookahead i)))))
-
-(declaim (inline item-derives item-symbol item-action
-                 item-dot-right-p item-dot-right item-dot-symbol
-                 item-lr1-equal-p item-lr1-hash-value item-equal-p))
 
 (defun item-derives (item)
   (declare (type item item))
