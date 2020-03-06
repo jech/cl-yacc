@@ -333,14 +333,6 @@
                  item-dot-right-p item-dot-right item-dot-symbol
                  item-lr1-equal-p item-lr1-hash-value item-equal-p))
 
-(defun print-item (i s d)
-  (declare (type item i) (stream s) (ignore d))
-  (print-unreadable-object (i s :type t)
-    (format s "~S -> ~{~S ~}. ~{~S~^ ~}"
-            (item-symbol i) (item-dot-left i) (item-dot-right i))
-    (when (lr1-item-p i)
-      (format s " (~S)" (item-lookahead i)))))
-
 (defun item-derives (item)
   (declare (type item item))
   (production-derives (item-production item)))
@@ -422,6 +414,13 @@
   (make-lr1-item (item-production item) (+ (item-position item) n)
                  (item-lookahead item)))
 
+(defun print-item (i s d)
+  (declare (type item i) (stream s) (ignore d))
+  (print-unreadable-object (i s :type t)
+    (format s "~S -> ~{~S ~}. ~{~S~^ ~}"
+            (item-symbol i) (item-dot-left i) (item-dot-right i))
+    (when (lr1-item-p i)
+      (format s " (~S)" (item-lookahead i)))))
 
 ;;; Sets of items
 
