@@ -44,11 +44,11 @@ Yacc, GNU Bison, Zebu, lalr.cl or lalr.scm.
 
 @ifhtml
 The latest version of CL-Yacc can be found on 
-@uref{http://www.pps.jussieu.fr/~jch/software/cl-yacc/,the CL-Yacc web page}.
+@uref{http://www.irif.fr/~jch/software/cl-yacc/,the CL-Yacc web page}.
 @end ifhtml
 
 This manual was written by
-@uref{http://www.pps.jussieu.fr/~jch/,,Juliusz Chroboczek}.
+@uref{http://www.irif.fr/~jch/,,Juliusz Chroboczek}.
 
 @end ifnottex
 
