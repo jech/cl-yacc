@@ -843,13 +843,17 @@ PRECEDENCE is a list of elements of the form (KEYWORD . (op...))."
     ((member op (cdar precedence)) precedence)
     (t (find-precedence op (cdr precedence)))))
 
+(defun precd-terminal-p (symbol grammar)
+  (and (terminal-p symbol grammar)
+       (find-precedence symbol (grammar-precedence grammar))))
+
 (defun find-single-terminal (s grammar)
   "Return the only terminal in S, or NIL if none or multiple."
   (declare (list s) (type grammar grammar))
   (cond
     ((null s) nil)
-    ((terminal-p (car s) grammar)
-     (and (not (member-if #'(lambda (s) (terminal-p s grammar)) (cdr s)))
+    ((precd-terminal-p (car s) grammar)
+     (and (not (member-if #'(lambda (s) (precd-terminal-p s grammar)) (cdr s)))
           (car s)))
     (t (find-single-terminal (cdr s) grammar))))
 
